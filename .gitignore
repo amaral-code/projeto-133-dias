@@ -1,0 +1,23 @@
+# deps
+node_modules/
+
+# build
+dist/
+
+# logs
+*.log
+npm-debug.log*
+
+# env
+.env
+.env.local
+.env.*.local
+
+# OS / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# vite
+.vite/
