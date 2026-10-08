@@ -161,6 +161,27 @@ export const useAppStore = create((set, get) => ({
       return { days, mealLog }
     }); persist(get)
   },
+  // Repete os extras de ontem no dia atual (economiza lançar tudo de novo)
+  repeatYesterday: (day) => {
+    const prev = get().mealLog[day - 1]
+    if (!prev || day < 2) return 0
+    const base = Date.now()
+    let n = 0
+    const copies = {}
+    for (const [mealId, m] of Object.entries(prev)) {
+      copies[mealId] = (m.extraItems ?? []).map((it) => ({ ...it, id: base + Math.random() + (n++) }))
+    }
+    if (!n) return 0
+    set((s) => {
+      const log = { ...(s.mealLog[day] ?? {}) }
+      for (const [mealId, items] of Object.entries(copies)) {
+        const cur = log[mealId] ?? { eaten: false, extraItems: [] }
+        log[mealId] = { ...cur, extraItems: [...cur.extraItems, ...items] }
+      }
+      return { mealLog: { ...s.mealLog, [day]: log } }
+    }); persist(get)
+    return n
+  },
   allSets: () => Object.values(get().days).flatMap((d) => d.sets ?? []),
   getMealItems: (day, mealId) => {
     const base = MEALS.find((m) => m.id === mealId)

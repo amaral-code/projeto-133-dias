@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { useProgressTracking } from '../hooks/useProgressTracking'
+import { useProgressTracking, isDayComplete, isWeekendDay } from '../hooks/useProgressTracking'
 import { PROGRAM, MISSIONS_TEMPLATE, setsForBlock } from '../data/program'
 import { blockForWeek, focusForWeek } from '../data/blocks'
 import { buildCardio } from '../data/cardio'
@@ -131,6 +131,24 @@ export default function Hoje() {
     <div className="space-y-4">
       <Celebration fire={celebrate} />
       <DayNav p={p} />
+
+      {/* ÚLTIMOS 7 DIAS */}
+      <div className="stagger-1 rounded-2xl border bg-white dark:bg-[#1E293B] px-4 py-3">
+        <div className="flex justify-between items-center">
+          {Array.from({ length: 7 }, (_, k) => p.displayDay - 6 + k).map((d) => {
+            const valid = d >= 1 && d <= p.currentDay
+            const wknd = valid && isWeekendDay(p.startDate, d)
+            const doneD = valid && !wknd && isDayComplete(p.days, d)
+            const isToday = d === p.displayDay
+            return (
+              <div key={d} className="flex flex-col items-center gap-1">
+                <span className={`text-[10px] font-bold ${isToday ? 'text-orange-500' : 'opacity-50'}`}>{d > 0 ? `D${d}` : '·'}</span>
+                <span className={`w-3.5 h-3.5 rounded-full ${!valid ? 'bg-slate-200 dark:bg-slate-800' : wknd ? 'bg-sky-300 dark:bg-sky-900' : doneD ? 'bg-emerald-500' : isToday ? 'bg-orange-500 animate-pulse' : 'bg-red-400/70'} ${isToday ? 'ring-2 ring-orange-300' : ''}`} />
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {/* STATUS + STREAK */}
       <div className="stagger-1 flex items-center justify-between text-xs">

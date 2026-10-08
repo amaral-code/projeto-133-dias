@@ -187,6 +187,114 @@ test('medidas corporais: 10 campos, normalização e retrocompatibilidade', asyn
   assert.deepEqual(b.lastMeasure({ 1: { weight: 71 }, 2: { weight: 70 } }, 2, 'weight'), { day: 2, value: 70 })
 })
 
+test('dieta: metas exatas do Miguel + extras somando', async () => {
+  const { targetsFor, dayTotals } = await import('../src/lib/diet.js')
+  const tg = targetsFor({ weight: 70, height: 167, age: 19, sex: 'M', defPct: 15 })
+  assert.equal(tg.kcal, 2320)
+  assert.equal(tg.protein, 140)
+  assert.equal(tg.fat, 63)
+  assert.equal(tg.carbs, 298)
+  assert.equal(tg.tdee, 2730)
+  assert.equal(tg.defPct, 15)
+  const log = { cafe: { extraItems: [{ kcal: 100, prot: 10, carb: 5, fat: 2 }, { kcal: 50, prot: 5, carb: 5, fat: 1 }] } }
+  const t = dayTotals(log)
+  const base = dayTotals({})
+  assert.equal(t.k - base.k, 150)
+  assert.ok(Math.abs((t.pr - base.pr) - 15) < 1e-9)
+})
+
+test('tdee: déficit % e classes de IMC nos limites', async () => {
+  const t = await import('../src/lib/tdee.js')
+  assert.equal(t.deficitKcalToPct(2730, 410), 15)
+  assert.equal(t.deficitKcalToPct(0, 100), 15)
+  assert.equal(t.imcClass(17), 'Abaixo do peso')
+  assert.equal(t.imcClass(18.5), 'Normal ✓')
+  assert.equal(t.imcClass(24.9), 'Normal ✓')
+  assert.equal(t.imcClass(25), 'Sobrepeso')
+  assert.equal(t.imcClass(30), 'Obesidade')
+  assert.equal(t.imcClass(0), '—')
+})
+
+test('nutrition: escala com base customizada e arredondamento', async () => {
+  const { scaleFood, portionPresets } = await import('../src/lib/nutrition.js')
+  const f = { name: 'X', kcal: 200, prot: 20, carb: 10, fat: 5, baseGrams: 50, unit: 'u' }
+  const r = scaleFood(f, 25)
+  assert.equal(r.kcal, 100)
+  assert.equal(r.prot, 10)
+  assert.equal(r.qty, 25)
+  assert.deepEqual(portionPresets(f).map((x) => x.grams), [25, 50, 75, 100])
+  assert.equal(scaleFood(f, -5).kcal, 0)
+})
+
+test('dupla progressão: nextLoad, última sessão e dica', async () => {
+  const dp = await import('../src/lib/doubleProgression.js')
+  assert.equal(dp.nextLoad({ exerciseName: 'Supino X', currentLoad: 70 }), 71)
+  assert.equal(dp.nextLoad({ exerciseName: 'Agachamento Livre', currentLoad: 70 }), 72.5)
+  const all = [
+    { exercise: 'A', day: 1, load: 50, repsDone: 8, repsTop: 8 },
+    { exercise: 'A', day: 3, load: 52, repsDone: 8, repsTop: 8 },
+    { exercise: 'B', day: 3, load: 20, repsDone: 8, repsTop: 10 },
+  ]
+  assert.equal(dp.lastSessionFor(all, 'A').length, 1)
+  assert.equal(dp.lastSessionFor(all, 'A')[0].load, 52)
+  assert.equal(dp.lastSessionFor(all, 'Z'), null)
+  assert.ok(dp.progressionHint('Supino X', [{ load: 70, repsDone: 10, repsTargetTop: 10 }]).startsWith('Progrida:'))
+  assert.equal(dp.progressionHint('A', []), 'Mantenha a carga e busque o teto de reps em todas as séries.')
+  const stay = dp.suggestNextLoad([{ exercise: 'B', day: 3, load: 20, repsDone: 6, repsTop: 10 }], { exerciseName: 'B', exerciseType: 'halteres', baseLoad: 20 })
+  assert.equal(stay.progressed, false)
+  assert.equal(stay.suggested, 20)
+})
+
+test('blocos: mapa completo 1–19 + focos nas bordas', async () => {
+  const { blockForWeek, focusForWeek, FOCUS } = await import('../src/data/blocks.js')
+  const ids = Array.from({ length: 19 }, (_, i) => blockForWeek(i + 1).id)
+  assert.deepEqual(ids, ['b1', 'b1', 'b1', 'b1', 'dl', 'b2', 'b2', 'b2', 'b2', 'dl', 'b3', 'b3', 'b3', 'b3', 'dl', 'b4', 'b4', 'b4', 'dl'])
+  assert.equal(focusForWeek(1), FOCUS[0])
+  assert.equal(focusForWeek(19), FOCUS[18])
+  assert.equal(focusForWeek(0), FOCUS[0])
+  assert.equal(focusForWeek(99), FOCUS[18])
+})
+
+test('cardio: totais por bloco batem com o cronograma', async () => {
+  const { buildCardio } = await import('../src/data/cardio.js')
+  assert.deepEqual([0, 1, 2, 3, 4].map((b) => buildCardio('SEG', b).total), [35, 35, 40, 40, 20])
+  assert.equal(buildCardio('QUA', 0).total, 25)
+  assert.equal(buildCardio('QUA', 4).total, 15)
+  assert.equal(buildCardio('SEX', 4).total, 30)
+  assert.ok(buildCardio('QUI', 3).stages.length > 40) // HIIT pico tem dezenas de etapas
+})
+
+test('store: repetir ontem + refeição marcada + itens da refeição', async () => {
+  const { useAppStore } = await import('../src/store/useAppStore.js')
+  const st = () => useAppStore.getState()
+  st().resetDay(5); st().resetDay(6)
+  st().addFoodToMeal(5, 'cafe', { name: 'Ovo', kcal: 70, prot: 6, carb: 1, fat: 5, unit: 'un' })
+  assert.equal(st().repeatYesterday(6), 1)
+  assert.equal(st().mealLog[6].cafe.extraItems.length, 1)
+  assert.equal(st().mealLog[6].cafe.extraItems[0].name, 'Ovo')
+  assert.notEqual(st().mealLog[6].cafe.extraItems[0].id, st().mealLog[5].cafe.extraItems[0].id)
+  assert.equal(st().repeatYesterday(1), 0) // dia 1 não tem ontem
+  st().toggleMealEaten(6, 'cafe')
+  assert.equal(st().mealLog[6].cafe.eaten, true)
+  st().toggleMealEaten(6, 'cafe')
+  assert.equal(st().mealLog[6].cafe.eaten, false)
+  const items = st().getMealItems(6, 'cafe')
+  assert.ok(items.length >= 2) // base + extra
+  st().resetDay(5); st().resetDay(6)
+})
+
+test('metrics extra: %1RM, limites FFMI/WHtR, BF mulher', async () => {
+  const m = await import('../src/lib/metrics.js')
+  assert.equal(m.pctOf1RM(100, 114.6), 87)
+  assert.equal(m.pctOf1RM(0, 100), null)
+  assert.equal(m.ffmiClass(16.9).label, 'Abaixo da média')
+  assert.equal(m.ffmiClass(25).label, 'Excelente — nível avançado')
+  assert.equal(m.ffmiClass(25.1).label, 'Acima do limite natural (~25)')
+  assert.equal(m.whtrClass(0.6).label, 'Risco alto')
+  assert.equal(m.bfCategory(23, 'F').label, 'Fitness')
+  assert.equal(m.bfCategory(32, 'F').label, 'Obesidade')
+})
+
 test('dieta compartilhada Hoje=Comida: metas e totais idênticos', async () => {
   const { targetsFor, dayTotals } = await import('../src/lib/diet.js')
   const tg = targetsFor({ weight: 70, height: 167, age: 19, sex: 'M', defPct: 15 })

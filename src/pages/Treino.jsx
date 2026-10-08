@@ -332,7 +332,7 @@ export default function Treino({ timer }) {
 
       {modo === 'foco' && (
         <button onClick={() => { setFocus((focusIdx + 1) % plan.exercises.length); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-          className="fixed bottom-[92px] lg:bottom-8 right-3 z-30 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-xs pl-5 pr-4 py-3.5 shadow-xl flex items-center gap-2 active:scale-95">
+          className={`fixed lg:bottom-8 right-3 z-30 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-xs pl-5 pr-4 py-3.5 shadow-xl flex items-center gap-2 active:scale-95 ${t.running || t.remainingMs > 0 ? 'bottom-[180px]' : 'bottom-[92px]'}`}>
           Próximo exercício <span className="bg-white/30 px-2 py-0.5 rounded-full">{focusIdx + 1}/{plan.exercises.length}</span> ›
         </button>
       )}

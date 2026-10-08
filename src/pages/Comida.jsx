@@ -18,6 +18,7 @@ export default function Comida() {
   const toggleMealEaten = useAppStore((s) => s.toggleMealEaten)
   const addFoodToMeal = useAppStore((s) => s.addFoodToMeal)
   const removeExtraItem = useAppStore((s) => s.removeExtraItem)
+  const repeatYesterday = useAppStore((s) => s.repeatYesterday)
   const showToast = useAppStore((s) => s.showToast)
 
   const [collapsed, setCollapsed] = useState({})
@@ -96,6 +97,14 @@ export default function Comida() {
         </div>
         <p className="text-[11px] opacity-80 mt-1">TDEE {TARGETS.tdee} − {TARGETS.defPct}% • P {TARGETS.protein}g • C {TARGETS.carbs}g • G {TARGETS.fat}g</p>
       </div>
+      {day > 1 && (
+        <button onClick={() => {
+          const n = repeatYesterday(day)
+          showToast(n > 0 ? `🔁 ${n} ${n === 1 ? 'item repetido' : 'itens repetidos'} de ontem` : 'Nada para repetir de ontem')
+        }} className="w-full min-h-[48px] rounded-2xl border border-dashed border-orange-500/40 text-orange-500 font-black text-sm active:scale-95">
+          🔁 Repetir o que comi ontem
+        </button>
+      )}
       {/* RESUMO FIXO — acompanha a rolagem no celular */}
       <div className="sticky top-2 z-20 bg-white dark:bg-[#1E293B] rounded-2xl border p-4 sm:p-5 shadow-lg">
         <div className="flex justify-between items-center">

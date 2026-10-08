@@ -108,6 +108,6 @@ export function useProgressTracking() {
     const _target = Math.round((_tdee * (1 - (user.defPct ?? 15) / 100)) / 10) * 10
     const weeklyDeficit = dietHits * (_tdee - _target)
 
-    return { currentDay, displayDay, isViewingPast: viewDay != null && viewDay !== currentDay, totalDays: TOTAL_DAYS, xp, level, levelName, levelProgress, nextCut, streak, dietHits, dietRate, loadEvolution, weeklyDeficit, days, mealLog }
+    return { startDate, currentDay, displayDay, isViewingPast: viewDay != null && viewDay !== currentDay, totalDays: TOTAL_DAYS, xp, level, levelName, levelProgress, nextCut, streak, dietHits, dietRate, loadEvolution, weeklyDeficit, days, mealLog }
   }, [startDate, days, mealLog, viewDay, user])
 }

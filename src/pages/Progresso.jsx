@@ -147,6 +147,22 @@ export default function Progresso() {
         ))}
       </div>
 
+      {(volumeSeries.length > 0 || rmList.length > 0) && (
+        <div className="rounded-2xl border bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30 p-5">
+          <h3 className="font-extrabold">🏆 Destaques</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 text-sm">
+            {volumeSeries.length > 0 && (() => {
+              const best = volumeSeries.reduce((a, b) => (b.volume > a.volume ? b : a))
+              return <div className="rounded-xl bg-white/60 dark:bg-slate-900/50 border p-3"><p className="text-[11px] font-bold opacity-60">MAIOR VOLUME</p><p className="font-black">{best.volume.toLocaleString('pt-BR')} kg <span className="font-medium opacity-60 text-xs">• dia {best.dia}</span></p></div>
+            })()}
+            {rmList.length > 0 && (
+              <div className="rounded-xl bg-white/60 dark:bg-slate-900/50 border p-3"><p className="text-[11px] font-bold opacity-60">MAIOR 1RM</p><p className="font-black">{rmList[0].rm} kg <span className="font-medium opacity-60 text-xs">• {rmList[0].ex.split(' ').slice(0, 3).join(' ')}</span></p></div>
+            )}
+            <div className="rounded-xl bg-white/60 dark:bg-slate-900/50 border p-3"><p className="text-[11px] font-bold opacity-60">TREINOS REGISTRADOS</p><p className="font-black">{volumeSeries.length} <span className="font-medium opacity-60 text-xs">sessões com carga</span></p></div>
+          </div>
+        </div>
+      )}
+
       {/* REGISTRAR MEDIDAS */}
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
         <div className="flex justify-between items-center gap-2">
