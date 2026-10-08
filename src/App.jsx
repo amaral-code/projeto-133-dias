@@ -1,5 +1,6 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { useAppStore } from './store/useAppStore'
+import { Icon } from './components/ui'
 import { useWorkoutTimer } from './hooks/useWorkoutTimer'
 import { useProgressTracking } from './hooks/useProgressTracking'
 import Hoje from './pages/Hoje'
@@ -10,9 +11,9 @@ import Guia from './pages/Guia'
 const Progresso = lazy(() => import('./pages/Progresso'))
 
 const TABS = [
-  { id: 'hoje', label: 'Hoje', icon: '▦' }, { id: 'treino', label: 'Treino', icon: '🏋️' },
-  { id: 'comida', label: 'Comida', icon: '🍽️' }, { id: 'progresso', label: 'Evolução', icon: '📈' },
-  { id: 'guia', label: 'Guia', icon: '⚙️' }
+  { id: 'hoje', label: 'Hoje', icon: 'home' }, { id: 'treino', label: 'Treino', icon: 'dumbbell' },
+  { id: 'comida', label: 'Comida', icon: 'food' }, { id: 'progresso', label: 'Evolução', icon: 'chart' },
+  { id: 'guia', label: 'Guia', icon: 'sliders' }
 ]
 
 function TimerBar({ timer }) {
@@ -73,8 +74,8 @@ export default function App() {
         <nav className="mt-6 space-y-1.5 flex-1">
           {TABS.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`w-full text-left px-4 py-3 rounded-2xl font-semibold min-h-[52px] ${tab === t.id ? 'bg-orange-500 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-              {t.icon} {t.label}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold min-h-[52px] ${tab === t.id ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              <Icon name={t.icon} size={19} /> {t.label}
             </button>
           ))}
         </nav>
@@ -85,13 +86,13 @@ export default function App() {
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-4 bottom-nav-pad">
         <div className="lg:hidden flex justify-between items-center pb-3 mb-2 border-b">
           <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-sm shadow-md shadow-orange-500/25">🔥</span>
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/25"><Icon name="flame" size={16} /></span>
             <div>
               <b className="text-[13px] tracking-tight">PROJETO 133 <span className="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-500">DIA {p.currentDay}/133</span></b>
             </div>
           </div>
           <div className="flex gap-2 items-center">
-            <span className="flame-badge text-xs font-black text-orange-500 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/30">🔥{p.streak}d ⚡{p.xp}</span>
+            <span className="flame-badge text-xs font-black text-orange-500 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center gap-1"><Icon name="flame" size={13} />{p.streak}d · {p.xp} XP</span>
             <button onClick={() => setDark(!isDark)} className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 min-w-[44px] min-h-[44px]">{isDark ? '☀️' : '🌙'}</button>
           </div>
         </div>
@@ -114,7 +115,7 @@ export default function App() {
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex flex-col items-center py-1 px-3 rounded-xl min-w-[60px] min-h-[56px] active:scale-90 ${tab === t.id ? 'text-orange-500 font-bold' : 'opacity-60'}`}>
-            <span className={`text-xl px-2 py-0.5 rounded-xl ${tab === t.id ? 'bg-orange-500/15 border border-orange-500/30' : ''}`}>{t.icon}</span><span className="text-[10px]">{t.label}</span>
+            <span className={`p-1.5 rounded-xl ${tab === t.id ? 'bg-orange-500/15 border border-orange-500/30' : ''}`}><Icon name={t.icon} size={20} /></span><span className="text-[10px]">{t.label}</span>
           </button>
         ))}
       </nav>

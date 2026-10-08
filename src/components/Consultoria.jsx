@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { lastMeasure } from '../data/body'
+import { Icon } from './ui'
 import {
   navyBF, bfCategory, ffmi, ffmiClass, whtr, whtrClass,
   hrZones, proteinTargets, cutPace, targetWeightForBF, weeksToGoal,
@@ -57,7 +58,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
   return (
     <div className="rounded-2xl border bg-gradient-to-br from-violet-950/60 to-slate-900 text-white p-5 space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-black text-lg">🩺 Consultoria do {(user.name || 'Miguel').split(' ')[0]}</h3>
+        <h3 className="font-black text-lg flex items-center gap-2"><span className="text-emerald-400"><Icon name="heart" size={20} /></span> Consultoria do {(user.name || 'Miguel').split(' ')[0]}</h3>
         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-white/10">fórmulas validadas¹</span>
       </div>
 

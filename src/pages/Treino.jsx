@@ -7,6 +7,7 @@ import { useProgressTracking } from '../hooks/useProgressTracking'
 import { useWorkoutTimer } from '../hooks/useWorkoutTimer'
 import { suggestNextLoad, lastSessionFor } from '../lib/doubleProgression'
 import { sessionVolume, formatKg } from '../lib/metrics'
+import { Icon } from '../components/ui'
 
 const mmss = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 
@@ -21,7 +22,7 @@ function CardioCard({ dayKey, blockIdx, day, timer }) {
     <div className={`rounded-2xl border p-4 ${cardioDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300' : 'bg-white dark:bg-[#1E293B]'}`}>
       <div className="flex justify-between items-start gap-2">
         <div>
-          <h4 className="font-extrabold">🏃 Cardio — {c.title} {cardioDone && <span className="text-emerald-500">✓</span>}</h4>
+          <h4 className="font-extrabold">Cardio — {c.title} {cardioDone && <span className="text-emerald-500">✓</span>}</h4>
           <p className="text-xs opacity-60">{c.summary} • {c.bpm}{c.dist ? ` • ${c.dist}` : ''}</p>
         </div>
         <button onClick={() => { setCardioDone(day, !cardioDone); if (!cardioDone) showToast('Cardio feito! +20 XP 🏃') }}
@@ -43,7 +44,7 @@ function CardioCard({ dayKey, blockIdx, day, timer }) {
               <p className="text-xs opacity-60">{mmss(s.sec)}{s.hint ? ` • ${s.hint}` : ''}</p>
             </div>
             <button onClick={() => timer.start(s.sec, `${s.label} — cardio`)}
-              className="min-h-[44px] px-3 rounded-lg bg-orange-500 text-white text-xs font-black shrink-0 active:scale-95">▶ {mmss(s.sec)}</button>
+              className="min-h-[44px] px-3 rounded-lg bg-orange-500 text-white text-xs font-black shrink-0 active:scale-95 flex items-center gap-1"><Icon name="play" size={12} /> {mmss(s.sec)}</button>
           </div>
         ))}
       </div>
@@ -270,7 +271,7 @@ export default function Treino({ timer }) {
           </div>
           <div className="flex items-baseline justify-between gap-2">
             <h4 className="font-black text-base leading-snug">#{focusIdx + 1} {focusEx.name}</h4>
-            <button onClick={() => setVideo(focusEx)} className="text-[11px] font-bold text-red-500 bg-red-500/10 px-2.5 py-2 rounded-lg border border-red-500/30 shrink-0 min-h-[44px]">▶ Técnica</button>
+            <button onClick={() => setVideo(focusEx)} className="text-[11px] font-bold text-red-500 bg-red-500/10 px-2.5 py-2 rounded-lg border border-red-500/30 shrink-0 min-h-[44px] flex items-center gap-1"><Icon name="play" size={11} /> Técnica</button>
           </div>
           <p className="mt-1 text-[10px] font-extrabold opacity-60 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md w-fit">RIR {block.rir}</p>
           {renderExerciseBody(focusEx)}
@@ -295,7 +296,7 @@ export default function Treino({ timer }) {
                 <p className="text-xs opacity-60">{ex.muscle} • {sets.filter((s) => logged(ex.name, s.setNumber)).length}/{sets.length} séries • {ex.reps.raw} • desc. {ex.rest}{collapsed ? ' • toque p/ abrir' : ''}</p>
               </div>
               <span className="flex gap-2 shrink-0">
-                <span onClick={(e) => { e.stopPropagation(); setVideo(ex) }} className="min-h-[44px] px-3 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/30 text-xs font-bold flex items-center">🎬 Vídeo</span>
+                <span onClick={(e) => { e.stopPropagation(); setVideo(ex) }} className="min-h-[44px] px-3 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/30 text-xs font-bold flex items-center gap-1"><Icon name="video" size={14} /> Vídeo</span>
                 <span className="text-xl opacity-50">{collapsed ? '›' : '⌄'}</span>
               </span>
             </button>
@@ -358,11 +359,11 @@ export default function Treino({ timer }) {
             <div className="grid grid-cols-2 gap-2 mt-4">
               <a href={video.videoPt} target="_blank" rel="noreferrer"
                 className="flex items-center justify-center gap-2 min-h-[52px] rounded-xl bg-red-600 text-white font-black text-sm">
-                ▶ Vídeo PT
+                <Icon name="play" size={14} /> Vídeo PT
               </a>
               <a href={video.videoEn} target="_blank" rel="noreferrer"
                 className="flex items-center justify-center gap-2 min-h-[52px] rounded-xl bg-slate-900 text-white font-black text-sm border border-white/20">
-                ▶ Vídeo EN
+                <Icon name="play" size={14} /> Vídeo EN
               </a>
             </div>
             <p className="text-[11px] opacity-50 mt-2 text-center">Dica: assista com Wi-Fi antes de descer p/ academia (modo offline).</p>

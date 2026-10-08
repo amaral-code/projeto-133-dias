@@ -4,6 +4,7 @@ import { useProgressTracking, isDayComplete, isWeekendDay } from '../hooks/usePr
 import { useAppStore } from '../store/useAppStore'
 import { MEASURE_FIELDS, normalizeBody } from '../data/body'
 import { navyBF, avg1RM, sessionVolume } from '../lib/metrics'
+import { SectionTitle, Icon } from '../components/ui'
 
 function delta(first, last, invert = false, unit = '') {
   if (first == null || last == null) return null
@@ -149,7 +150,7 @@ export default function Progresso() {
 
       {(volumeSeries.length > 0 || rmList.length > 0) && (
         <div className="rounded-2xl border bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30 p-5">
-          <h3 className="font-extrabold">🏆 Destaques</h3>
+          <div className="mb-1"><SectionTitle icon="trophy">Destaques</SectionTitle></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 text-sm">
             {volumeSeries.length > 0 && (() => {
               const best = volumeSeries.reduce((a, b) => (b.volume > a.volume ? b : a))
@@ -166,14 +167,14 @@ export default function Progresso() {
       {/* REGISTRAR MEDIDAS */}
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
         <div className="flex justify-between items-center gap-2">
-          <h3 className="font-extrabold">📏 Medidas do dia {day}</h3>
+          <div className="mb-1"><SectionTitle icon="ruler">Medidas do dia {day}</SectionTitle></div>
           <button onClick={() => setTipOpen(!tipOpen)} className="text-xs font-bold text-orange-500 min-h-[36px] px-2">como medir?</button>
         </div>
         {tipOpen && (
           <div className="mt-2 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-xs space-y-1">
-            <p>🎯 <b>Meça 1x/semana</b>, sempre igual: em jejum, após o banheiro, relaxado.</p>
-            <p>📏 Cintura no umbigo • Quadril na parte mais larga • Braço contraído no pico.</p>
-            <p>⚖️ Peso todo dia de manhã; demais medidas 1x/semana bastam.</p>
+            <p><b>Meça 1x/semana</b>, sempre igual: em jejum, após o banheiro, relaxado.</p>
+            <p>Cintura no umbigo • Quadril na parte mais larga • Braço contraído no pico.</p>
+            <p>Peso todo dia de manhã; demais medidas 1x/semana bastam.</p>
           </div>
         )}
         {saved && <p className="text-xs font-bold text-emerald-500 mt-1">✓ Medidas salvas no dia {day}!</p>}
@@ -194,7 +195,7 @@ export default function Progresso() {
       {/* RESUMO COMPARATIVO */}
       {Object.keys(firstLast).length > 0 && (
         <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-          <h3 className="font-extrabold">🔄 Evolução (primeira → última)</h3>
+          <div className="mb-1"><SectionTitle icon="chart">Evolução (primeira → última)</SectionTitle></div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
             {MEASURE_FIELDS.filter((f) => firstLast[f.id]).map((f) => {
               const e = firstLast[f.id]
@@ -213,7 +214,7 @@ export default function Progresso() {
       )}
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold">Mapa dos 133 dias <span className="text-xs font-medium opacity-50">(toque p/ revisar o dia)</span></h3>
+        <div className="mb-1"><SectionTitle icon="calendar">Mapa dos 133 dias <span className="text-xs font-medium opacity-50">(toque p/ revisar o dia)</span></SectionTitle></div>
         <div className="flex gap-3 text-[11px] opacity-60 mt-1 mb-2">
           <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" />feito</span>
           <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-red-400/70 inline-block" />pendente</span>
@@ -230,7 +231,7 @@ export default function Progresso() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold">⚖️ Peso corporal</h3>
+        <div className="mb-1"><SectionTitle icon="scale">Peso corporal</SectionTitle></div>
         {weightChart.length === 0
           ? <p className="text-xs opacity-60 mt-1">Registre seu peso acima para ver o gráfico. Ex: hoje {day}.</p>
           : <div className="h-56 mt-2">
@@ -247,7 +248,7 @@ export default function Progresso() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold">📏 Cintura & Quadril (cm)</h3>
+        <div className="mb-1"><SectionTitle icon="ruler">Cintura e quadril (cm)</SectionTitle></div>
         {waistChart.length === 0
           ? <p className="text-xs opacity-60 mt-1">Sem medidas ainda — registre cintura 1x/semana.</p>
           : <div className="h-56 mt-2">
@@ -265,7 +266,7 @@ export default function Progresso() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold">💪 Braços D/E (cm)</h3>
+        <div className="mb-1"><SectionTitle icon="dumbbell">Braços D/E (cm)</SectionTitle></div>
         {armChart.length === 0
           ? <p className="text-xs opacity-60 mt-1">Sem medidas de braço ainda.</p>
           : <div className="h-48 mt-2">
@@ -283,7 +284,7 @@ export default function Progresso() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold">🔥 % Gordura (US Navy)</h3>
+        <div className="mb-1"><SectionTitle icon="heart">Gordura corporal (US Navy)</SectionTitle></div>
         {bfChart.length === 0
           ? <p className="text-xs opacity-60 mt-1">Registre cintura + pescoço para ver seu BF% real (só fita métrica).</p>
           : <div className="h-48 mt-2">
@@ -302,7 +303,7 @@ export default function Progresso() {
       {history.length > 0 && (
         <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
           <div className="flex justify-between items-center">
-            <h3 className="font-extrabold">🗂️ Histórico</h3>
+            <div className="mb-1"><SectionTitle icon="calendar">Histórico</SectionTitle></div>
             <button onClick={() => setShowAll(!showAll)} className="text-xs font-bold text-orange-500 min-h-[36px]">{showAll ? 'ver menos' : 'ver mais'}</button>
           </div>
           <div className="overflow-x-auto mt-2">
@@ -327,7 +328,7 @@ export default function Progresso() {
       )}
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold">Déficit calórico semanal (estimado)</h3>
+        <div className="mb-1"><SectionTitle icon="target">Déficit semanal (estimado)</SectionTitle></div>
         <div className="h-48 mt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={deficitSeries}>
@@ -342,7 +343,7 @@ export default function Progresso() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold">🏋️ Volume por treino (kg totais)</h3>
+        <div className="mb-1"><SectionTitle icon="dumbbell">Volume por treino</SectionTitle></div>
         {volumeSeries.length === 0
           ? <p className="text-xs opacity-60 mt-1">Registre séries com carga no Treino para ver o volume.</p>
           : <div className="h-48 mt-2">
@@ -359,7 +360,7 @@ export default function Progresso() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold mb-2">🏋️ Força máxima estimada (1RM · Epley+Brzycki)</h3>
+        <div className="mb-2"><SectionTitle icon="zap">Força máxima estimada (1RM)</SectionTitle></div>
         {rmList.length === 0 && <p className="text-xs opacity-60">Conclua séries com carga no Treino para ver seu 1RM estimado por exercício.</p>}
         {rmList.map((r) => (
           <div key={r.ex} className="text-xs flex justify-between border-b py-2">
@@ -370,7 +371,7 @@ export default function Progresso() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold mb-2">Evolução de cargas (dupla progressão)</h3>
+        <div className="mb-2"><SectionTitle icon="chart">Evolução de cargas</SectionTitle></div>
         {Object.keys(p.loadEvolution).length === 0 && <p className="text-xs opacity-60">Conclua séries no Treino para ver Δ de carga por exercício.</p>}
         {Object.entries(p.loadEvolution).map(([ex, e]) => (
           <div key={ex} className="text-xs flex justify-between border-b py-2"><span className="font-bold">{ex}</span><span>{e.first}kg → <b className="text-emerald-500">{e.last}kg ({e.delta >= 0 ? '+' : ''}{e.delta})</b> • {e.sessions} séries</span></div>

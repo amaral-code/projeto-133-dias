@@ -7,8 +7,9 @@ import { buildCardio } from '../data/cardio'
 import { calcWaterGoal } from '../lib/tdee'
 import { dayTotals, targetsFor } from '../lib/diet'
 import { sfx } from '../lib/sound'
+import { Card, SectionTitle, Btn, Bar, QuestRow, Icon } from '../components/ui'
 
-const ICONS = { utensils: '🍽️', droplet: '💧', dumbbell: '🏋️', flame: '🔥', moon: '🌙' }
+const ICONS = { utensils: 'food', droplet: 'drop', dumbbell: 'dumbbell', flame: 'flame', moon: 'moon' }
 const AUTO_KEY = () => ['SEG', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SEG'][new Date().getDay()] ?? 'SEG'
 const GAUGE_C = 2 * Math.PI * 42
 
@@ -156,7 +157,7 @@ export default function Hoje() {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />PWA offline ✓
         </span>
         <span className="flex items-center gap-2">
-          <span className="flame-badge flex items-center gap-1 rounded-xl border border-orange-500/50 bg-gradient-to-r from-orange-950/90 to-amber-950/90 px-2.5 py-1 text-xs font-black text-orange-200">🔥 {p.streak}d</span>
+          <span className="flame-badge flex items-center gap-1 rounded-xl border border-orange-500/50 bg-gradient-to-r from-orange-950/90 to-amber-950/90 px-2.5 py-1 text-xs font-black text-orange-200"><Icon name="flame" size={14} /> {p.streak}d</span>
           <span className="w-8 h-8 rounded-full bg-slate-800 border-2 border-orange-500/80 flex items-center justify-center font-bold text-[11px] text-white">{initials}</span>
         </span>
       </div>
@@ -171,7 +172,7 @@ export default function Hoje() {
         <div className="flex items-end justify-between mt-2">
           <div>
             <p className="text-3xl font-extrabold tracking-tight text-white">DIA <span className="text-4xl font-black text-orange-500">{day}</span> <span className="text-sm font-medium text-slate-400">/ 133</span></p>
-            <p className="text-xs text-slate-400 mt-0.5">👋 {firstName} • {user.weight}kg • faltam {133 - day} dias</p>
+            <p className="text-xs text-slate-400 mt-0.5">{firstName} • {user.weight}kg • faltam {133 - day} dias</p>
           </div>
           <div className="text-right rounded-xl bg-orange-500/10 border border-orange-500/25 p-2">
             <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold leading-none">Nível {p.level}</p>
@@ -179,10 +180,10 @@ export default function Hoje() {
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 mt-3">
-          {[['🔥', `${p.streak}d`, 'streak'], ['⚡', `${p.xp} XP`, 'xp total'], ['🎯', `${p.dietRate}%`, 'dieta']].map(([i, v, l]) => (
+          {[['flame', `${p.streak}d`, 'streak'], ['zap', `${p.xp} XP`, 'xp total'], ['target', `${p.dietRate}%`, 'dieta']].map(([i, v, l]) => (
             <div key={l} className="rounded-2xl bg-slate-800/70 border border-slate-700/60 p-2.5 text-center">
-              <div className="text-lg">{i}</div>
-              <div className="font-black text-sm">{v}</div>
+              <div className="flex justify-center text-orange-400"><Icon name={i} size={19} /></div>
+              <div className="font-black text-sm mt-0.5">{v}</div>
               <div className="text-[10px] text-slate-400 uppercase">{l}</div>
             </div>
           ))}
@@ -205,23 +206,21 @@ export default function Hoje() {
         <h2 className="text-lg font-black leading-tight mt-1.5">{isWeekend ? `Descanso — próximo: ${plan.name} (SEG)` : `Treino de hoje: ${plan.name}`}</h2>
         <p className="text-xs text-orange-100/90 mt-1 font-medium">~{estMin} min • {blockSets} séries + cardio {cardioTotal} min • {focusForWeek(week)}</p>
         <div className="grid grid-cols-2 gap-2 mt-3 relative z-10">
-          <button onClick={() => { setTrainKey(trainKey); setTab('treino') }} className="min-h-[52px] rounded-xl bg-white text-orange-600 font-black text-sm active:scale-95">▶ Iniciar treino</button>
+          <button onClick={() => { setTrainKey(trainKey); setTab('treino') }} className="min-h-[52px] rounded-xl bg-white text-orange-600 font-black text-sm active:scale-95 flex items-center justify-center gap-1.5"><Icon name="play" size={14} /> Iniciar treino</button>
           <button onClick={() => setTab('comida')} className="min-h-[52px] rounded-xl bg-black/20 border border-white/20 font-bold text-sm active:scale-95">+ Refeição</button>
         </div>
       </section>
 
       {/* MISSÕES DIÁRIAS */}
-      <section className="stagger-3 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 p-4 shadow-md">
+      <Card>
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-extrabold text-sm">✓ Missões diárias</h3>
+          <SectionTitle icon="check">Missões diárias</SectionTitle>
           <div className="text-right">
             <span className="text-xs font-black text-emerald-500">{done}/{MISSIONS_TEMPLATE.length}</span>
             <span className="text-[10px] text-slate-400 block font-medium">{pct}% concluído</span>
           </div>
         </div>
-        <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden mb-3">
-          <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-        </div>
+        <Bar value={pct} className="mb-3 text-emerald-500" />
         <div className="space-y-2.5">
           {MISSIONS_TEMPLATE.map((m) => {
             const on = !!missions[m.id]
@@ -231,7 +230,7 @@ export default function Hoje() {
                 <div key={m.id} className={`relative p-3 rounded-xl border overflow-hidden ${on || waterDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300' : 'bg-slate-50 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-3 min-w-0">
-                      <span className="text-2xl">💧</span>
+                      <span className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0"><Icon name="drop" size={18} /></span>
                       <span className="min-w-0">
                         <span className="block text-sm font-bold">Beber {(WATER_GOAL / 1000).toFixed(1)}L de água</span>
                         <span className="block text-xs opacity-70 font-medium">{(waterMl / 1000).toFixed(2)}L de {(WATER_GOAL / 1000).toFixed(1)}L • +{m.xp} XP</span>
@@ -250,24 +249,18 @@ export default function Hoje() {
               )
             }
             return (
-              <button key={m.id} onClick={() => onToggleMission(m.id)}
-                className={`w-full min-h-[60px] flex items-center justify-between p-3 rounded-xl border text-left active:scale-[0.99] ${on ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'}`}>
-                <span className="flex items-center gap-3">
-                  <span className="text-2xl">{ICONS[m.icon]}</span>
-                  <span><span className={`block text-sm font-bold ${on ? 'line-through opacity-70' : ''}`}>{m.title}</span>
-                  <span className="block text-xs opacity-70">+{m.xp ?? 10} XP • {m.desc}</span></span>
-                </span>
-                <span className={`w-8 h-8 rounded-lg flex items-center justify-center border font-black ${on ? 'bg-emerald-500 text-white border-emerald-500 check-pop' : 'bg-white dark:bg-slate-800'}`}>{on ? '✓' : ''}</span>
-              </button>
+              <QuestRow key={m.id} icon={ICONS[m.icon]} title={m.title}
+                sub={`+${m.xp ?? 10} XP • ${m.desc}`} done={on}
+                onToggle={() => onToggleMission(m.id)} />
             )
           })}
         </div>
-      </section>
+      </Card>
 
       {/* BALANÇO CALÓRICO */}
-      <section className="stagger-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 p-4 shadow-md">
+      <Card>
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-extrabold text-sm">◔ Balanço calórico</h3>
+          <SectionTitle icon="chart">Balanço calórico</SectionTitle>
           <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${remain >= 0 ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-500'}`}>
             {remain >= 0 ? `Em déficit (−${remain})` : `Acima (+${-remain})`}
           </span>
@@ -308,24 +301,24 @@ export default function Hoje() {
             </div>
           ))}
         </div>
-        <button onClick={() => setTab('comida')} className="mt-3 w-full min-h-[48px] rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-black text-sm active:scale-95">🍽️ Lançar comida do dia {day}</button>
-      </section>
+        <button onClick={() => setTab('comida')} className="mt-3 w-full min-h-[48px] rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-black text-sm active:scale-95 flex items-center justify-center gap-2"><Icon name="food" size={16} /> Lançar comida do dia {day}</button>
+      </Card>
 
       {/* PESAGEM RÁPIDA */}
-      <section className="rounded-2xl bg-white dark:bg-[#1E293B] border p-4">
+      <Card>
         <div className="flex justify-between items-center">
-          <h3 className="font-extrabold text-sm">⚖️ Pesagem de hoje</h3>
+          <SectionTitle icon="scale">Pesagem de hoje</SectionTitle>
           {dayLog.weight && <span className="text-xs font-black px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500">{dayLog.weight}kg ✓</span>}
         </div>
-        {savedFlash && <p className="text-xs font-bold text-emerald-500 mt-1">✓ Peso salvo!</p>}
+        {savedFlash && <p className="text-xs font-bold text-emerald-500 mt-1">Peso salvo!</p>}
         <div className="flex gap-2 mt-2">
           <input type="number" step="0.1" inputMode="decimal" value={quickWeight} onChange={(e) => setQuickWeight(e.target.value)} placeholder={`${user.weight} kg`}
             className="flex-1 min-h-[52px] px-4 rounded-xl bg-slate-100 dark:bg-slate-900 border font-black text-lg text-center" />
-          <button onClick={saveQuickWeight} disabled={!(Number(String(quickWeight).replace(',', '.')) > 0)} className="min-h-[52px] px-5 rounded-xl bg-emerald-500 text-white font-black disabled:opacity-40 active:scale-95">Salvar</button>
-          <button onClick={() => setTab('progresso')} className="min-h-[52px] px-4 rounded-xl border font-bold text-sm active:scale-95">📏 Medidas</button>
+          <Btn variant="success" onClick={saveQuickWeight} disabled={!(Number(String(quickWeight).replace(',', '.')) > 0)} className="px-5">Salvar</Btn>
+          <Btn variant="ghost" onClick={() => setTab('progresso')} className="px-4">Medidas</Btn>
         </div>
-        <p className="text-[11px] opacity-50 mt-1">Pese-se em jejum, após o banheiro. Medidas completas (braço, cintura…) na aba Evolução.</p>
-      </section>
+        <p className="text-[11px] opacity-50 mt-1">Pese-se em jejum, após o banheiro. Medidas completas na aba Evolução.</p>
+      </Card>
     </div>
   )
 }

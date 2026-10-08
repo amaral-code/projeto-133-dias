@@ -1,6 +1,7 @@
 import { useAppStore } from '../store/useAppStore'
 import { useProgressTracking } from '../hooks/useProgressTracking'
 import Consultoria from '../components/Consultoria'
+import { SectionTitle } from '../components/ui'
 import { calcBMR, calcTDEE, calcTargetCalories, calcIMC, calcMaxHR, calcMacros, calcWaterGoal, imcClass } from '../lib/tdee'
 import { clearPersisted, savePersistedDebounced } from '../lib/db'
 
@@ -64,7 +65,7 @@ export default function Guia() {
     <div className="space-y-4">
       {/* QUANTO COMER — resumo do cronograma */}
       <div className="rounded-2xl border bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-5">
-        <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-80">🍽️ Quanto comer por dia</p>
+        <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-80">Quanto comer por dia</p>
         <h3 className="font-black text-3xl mt-1">{target} <span className="text-base font-bold">kcal/dia</span></h3>
         <p className="text-xs opacity-90 mt-1">TDEE {tdee} − {user.defPct ?? 15}% de déficit (−{deficitKcal} kcal)</p>
         <div className="grid grid-cols-3 gap-2 mt-3">
@@ -90,7 +91,7 @@ export default function Guia() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold mb-2">✏️ Editar perfil</h3>
+        <div className="mb-2"><SectionTitle icon="pencil">Editar perfil</SectionTitle></div>
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="text-xs font-bold">Nome
             <input value={user.name} onChange={(e) => setUser({ name: e.target.value, initials: e.target.value.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() })} className="mt-1 w-full min-h-[52px] px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border font-bold" />
@@ -115,12 +116,12 @@ export default function Guia() {
       <Consultoria user={user} days={days} currentDay={p.currentDay} onGoMeasures={() => setTab('progresso')} />
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold mb-2">📲 Instalar no celular (funciona offline)</h3>
+        <div className="mb-2"><SectionTitle icon="phone">Instalar no celular <span className="font-medium opacity-60 text-xs">(funciona offline)</span></SectionTitle></div>
         <p className="text-xs opacity-70"><b>iPhone:</b> Safari → Compartilhar → <b>Adicionar à Tela de Início</b>. <b>Android:</b> Chrome → ⋮ → <b>Instalar app</b>. Depois abre como app, sem barra do navegador, e funciona sem internet na academia.</p>
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
-        <h3 className="font-extrabold mb-2">💾 Backup & dados <span className="text-xs font-medium text-emerald-500">✓ salvamento automático duplo</span></h3>
+        <div className="mb-2"><SectionTitle icon="save">Backup e dados <span className="text-xs font-medium text-emerald-500">· salvamento automático</span></SectionTitle></div>
         <div className="grid sm:grid-cols-3 gap-2">
           <button onClick={exportBackup} className="min-h-[52px] rounded-xl bg-emerald-500 text-white font-black active:scale-95">⬇ Exportar backup</button>
           <label className="min-h-[52px] rounded-xl border font-bold flex items-center justify-center cursor-pointer active:scale-95">⬆ Importar
@@ -132,7 +133,7 @@ export default function Guia() {
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5 text-sm space-y-2">
-        <h3 className="font-extrabold">📖 Como usar (30 segundos)</h3>
+        <div><SectionTitle icon="book">Como usar</SectionTitle></div>
         <p><b>1. Hoje:</b> marque missões + água + peso. <b>2. Treino:</b> musculação do cronograma + cardio do dia, o descanso cronometra sozinho. <b>3. Comida:</b> bata a meta de {target} kcal lançando por gramas. <b>4. Evolução:</b> meça cintura/braços 1x/semana.</p>
         <p className="text-xs opacity-60">Dupla progressão: bateu o teto de reps em todas as séries → o app sugere +carga no próximo treino. Semana 5/10/15/19 = deload (cargas −10%).</p>
       </div>

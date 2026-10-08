@@ -5,6 +5,7 @@ import { dayTotals, targetsFor } from '../lib/diet'
 import { buscarPorNome, buscarPorCodigoDeBarras } from '../lib/foods/foodService.js'
 import { foodParaItemRefeicao } from '../lib/foods/schema.js'
 import { scaleFood, portionPresets } from '../lib/nutrition'
+import { Icon } from '../components/ui'
 import { useAppStore } from '../store/useAppStore'
 import { useProgressTracking } from '../hooks/useProgressTracking'
 
@@ -88,7 +89,7 @@ export default function Comida() {
     <div className="space-y-4">
       {/* QUANTO COMER HOJE — meta do cronograma */}
       <div className="rounded-2xl border bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-4">
-        <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-80">🍽️ Quanto comer hoje (Miguel)</p>
+        <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-80">Quanto comer hoje (Miguel)</p>
         <div className="flex justify-between items-end mt-1">
           <p className="font-black text-2xl">{Math.round(totals.k)} <span className="text-sm font-bold opacity-80">de {TARGETS.kcal} kcal</span></p>
           <span className={`text-xs font-black px-2.5 py-1.5 rounded-full ${remain >= 0 ? 'bg-white/20' : 'bg-red-500'}`}>
@@ -101,8 +102,8 @@ export default function Comida() {
         <button onClick={() => {
           const n = repeatYesterday(day)
           showToast(n > 0 ? `🔁 ${n} ${n === 1 ? 'item repetido' : 'itens repetidos'} de ontem` : 'Nada para repetir de ontem')
-        }} className="w-full min-h-[48px] rounded-2xl border border-dashed border-orange-500/40 text-orange-500 font-black text-sm active:scale-95">
-          🔁 Repetir o que comi ontem
+        }} className="w-full min-h-[48px] rounded-2xl border border-dashed border-orange-500/40 text-orange-500 font-black text-sm active:scale-95 flex items-center justify-center gap-2">
+          <Icon name="repeat" size={15} /> Repetir o que comi ontem
         </button>
       )}
       {/* RESUMO FIXO — acompanha a rolagem no celular */}
