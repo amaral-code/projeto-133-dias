@@ -263,6 +263,35 @@ test('store: perfil Miguel + missões + água + séries + cardio consistentes', 
   await new Promise((r) => setTimeout(r, 1300))
 })
 
+test('TACO: parser CSV, busca sem acento e cálculo por gramas', async () => {
+  const { parseTacoCSV, searchTaco, tacoToFood, calcTacoNutrition, normTaco } = await import('../src/lib/taco.js')
+  const csv = 'numero_alimento,descricao,umidade_pct,energia_kcal,energia_kj,proteina_g,lipideos_g,colesterol_mg,carboidrato_g,fibra_g,cinzas_g,categoria\n'
+    + '1,"Arroz, integral, cozido",70.1,123.5,516.8,2.5,1.0,,25.8,2.7,0.4,Cereais e derivados\n'
+    + '2,"Açaí, polpa, com xarope",60.0,200.0,837.0,1.5,10.0,,25.0,1.0,0.5,Frutas\n'
+    + '3,"Peito de frango, grelhado",65.0,159.0,665.0,31.0,3.4,,0.0,0.0,1.0,Carnes\n'
+  const rows = parseTacoCSV(csv)
+  assert.equal(rows.length, 3)
+  assert.equal(rows[0].descricao, 'Arroz, integral, cozido') // vírgula dentro de aspas preservada
+  assert.equal(rows[0].kcal100, 123.5)
+  // busca sem acento e multi-termo
+  assert.equal(normTaco('Açaí'), 'acai')
+  assert.equal(searchTaco(rows, 'acai')[0].descricao, 'Açaí, polpa, com xarope')
+  assert.equal(searchTaco(rows, 'arroz integral').length, 1)
+  assert.equal(searchTaco(rows, 'arroz frango').length, 0) // AND, não OR
+  assert.ok(searchTaco(rows, 'arroz').length >= 1)
+  // cálculo por gramas: 150 g de arroz integral → 185 kcal
+  const n = calcTacoNutrition(rows[0], 150)
+  assert.equal(n.kcal, 185)
+  assert.equal(n.prot, 3.8)
+  assert.equal(n.gramas, 150)
+  assert.equal(calcTacoNutrition(rows[0], 0).kcal, 0)
+  // formato compatível com o app (base 100 g → scaleFood funciona)
+  const f = tacoToFood(rows[2])
+  assert.equal(f.baseGrams, 100)
+  assert.equal(f.prot, 31)
+  assert.ok(f.name.includes('(TACO)'))
+})
+
 test('fim de semana = descanso: não quebra streak nem marca pendente', async () => {
   const { isWeekendDay, dateForDay } = await import('../src/hooks/useProgressTracking.js')
   // 2026-10-05 é segunda; dia 1 = seg, dia 6 = sáb, dia 7 = dom

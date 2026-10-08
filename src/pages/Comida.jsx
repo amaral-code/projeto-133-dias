@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MEALS } from '../data/meals'
 import { EXTRA_FOODS } from '../data/foods'
 import { dayTotals, targetsFor } from '../lib/diet'
+import { fetchTacoTable, searchTaco, tacoToFood } from '../lib/taco'
 import { scaleFood, portionPresets } from '../lib/nutrition'
 import { useAppStore } from '../store/useAppStore'
 import { useProgressTracking } from '../hooks/useProgressTracking'
@@ -23,6 +24,9 @@ export default function Comida() {
   const [picked, setPicked] = useState(null) // alimento na calculadora
   const [grams, setGrams] = useState('')
   const [custom, setCustom] = useState({ name: '', kcal: '', prot: '', carb: '', fat: '' })
+  const [tacoRows, setTacoRows] = useState(null) // tabela TACO (cache offline)
+  const [tacoHits, setTacoHits] = useState([]) // resultados TACO p/ busca atual
+  const [tacoStatus, setTacoStatus] = useState('idle') // idle|loading|ready|offline
 
   // Metas do cronograma oficial (mesma conta da tela Hoje — lib/diet)
   const user = useAppStore((s) => s.user)
@@ -37,7 +41,21 @@ export default function Comida() {
     <div className="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div className={`h-full ${cls}`} style={{ width: `${Math.min(100, (v / t) * 100)}%` }} /></div>
   )
 
-  const openSheet = (mealId) => { setOpen(mealId); setQ(''); setPicked(null); setGrams('') }
+  const openSheet = (mealId) => { setOpen(mealId); setQ(''); setPicked(null); setGrams(''); setTacoHits([]) }
+  // TACO: baixa 1x em 2º plano ao abrir (depois usa cache offline)
+  useEffect(() => {
+    if (!open || tacoRows || tacoStatus === 'loading') return
+    setTacoStatus('loading')
+    fetchTacoTable()
+      .then(({ rows }) => { setTacoRows(rows); setTacoStatus('ready') })
+      .catch(() => setTacoStatus('offline'))
+  }, [open, tacoRows, tacoStatus])
+  // TACO: busca com debounce enquanto digita
+  useEffect(() => {
+    if (!open || q.trim().length < 2 || !tacoRows) { setTacoHits([]); return }
+    const id = setTimeout(() => setTacoHits(searchTaco(tacoRows, q).map(tacoToFood)), 350)
+    return () => clearTimeout(id)
+  }, [open, q, tacoRows])
   const pick = (f) => { setPicked(f); setGrams(String(f.baseGrams || 100)) }
   const confirmCalc = () => {
     if (!picked || !(Number(grams) > 0)) return
@@ -141,8 +159,23 @@ export default function Comida() {
                       <span className="font-black text-orange-500">›</span>
                     </button>
                   ))}
-                  {!filtered.length && <p className="text-xs opacity-60">Nada encontrado — cadastre abaixo.</p>}
+                  {!filtered.length && !tacoHits.length && <p className="text-xs opacity-60">Nada encontrado — cadastre abaixo.</p>}
                 </div>
+                {tacoHits.length > 0 && (
+                  <>
+                    <p className="text-[11px] font-black mt-3 mb-1 opacity-60">🌐 TACO · UNICAMP ({tacoHits.length})</p>
+                    <div className="space-y-1.5 max-h-56 overflow-auto">
+                      {tacoHits.map((f) => (
+                        <button key={f.name} onClick={() => pick(f)}
+                          className="w-full min-h-[56px] px-3 py-2 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 text-left border border-emerald-500/30 active:scale-[0.99] flex justify-between items-center gap-2">
+                          <span className="font-bold text-sm">{f.name}<span className="block text-[11px] font-normal opacity-60">100g = {f.kcal} kcal • P{f.prot} C{f.carb} G{f.fat}</span></span>
+                          <span className="font-black text-emerald-500">›</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {q.trim().length >= 2 && tacoStatus === 'loading' && <p className="text-[11px] opacity-50 mt-1">🌐 Buscando na tabela TACO…</p>}
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-xs font-black mb-2">+ Comida avulsa (vale da refeição)</p>
                   <input value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} placeholder="Nome do que você comeu" className="w-full min-h-[52px] px-3 rounded-xl bg-slate-100 dark:bg-slate-900 border text-sm mb-2" />
