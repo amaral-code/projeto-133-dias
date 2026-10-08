@@ -56,21 +56,21 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
   const wC = whtrClass(m.w)
 
   return (
-    <div className="rounded-2xl border bg-gradient-to-br from-violet-950/60 to-slate-900 text-white p-5 space-y-4">
+    <div className="rounded-lg border bg-card text-white p-5 space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="font-black text-lg flex items-center gap-2"><span className="text-emerald-400"><Icon name="heart" size={20} /></span> Consultoria do {(user.name || 'Miguel').split(' ')[0]}</h3>
         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-white/10">fórmulas validadas¹</span>
       </div>
 
       {m.missing.length > 0 && (
-        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-xs">
+        <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 text-xs">
           <p className="font-bold">📏 Meça para liberar a consultoria completa — falta: <b>{m.missing.join(', ')}</b> (pescoço só 1x).</p>
-          <button onClick={onGoMeasures} className="mt-2 min-h-[48px] w-full rounded-xl bg-amber-500 text-slate-900 font-black active:scale-95">Ir para medidas</button>
+          <button onClick={onGoMeasures} className="mt-2 min-h-[48px] w-full rounded-md bg-amber-500 text-slate-900 font-black active:scale-95">Ir para medidas</button>
         </div>
       )}
 
       {/* COMPOSIÇÃO */}
-      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+      <div className="rounded-md bg-white/5 border border-white/10 p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-60">Composição (US Navy + Siri)</p>
         {m.bf != null ? (<>
           <p className="font-black text-3xl mt-1">{m.bf}<span className="text-base">% gordura</span> <span className={`text-sm font-bold ${TONE[bfCat.tone]}`}>• {bfCat.label}</span></p>
@@ -83,7 +83,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
       </div>
 
       {/* CINTURA */}
-      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+      <div className="rounded-md bg-white/5 border border-white/10 p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-60">Cintura / altura (Ashwell · NICE)</p>
         {m.w != null ? (<>
           <p className="font-black text-2xl mt-1">{m.w} <span className={`text-sm font-bold ${TONE[wC.tone]}`}>• {wC.label}</span></p>
@@ -92,7 +92,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
       </div>
 
       {/* CORAÇÃO */}
-      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+      <div className="rounded-md bg-white/5 border border-white/10 p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-60">Zonas de FC · {m.zones.method}</p>
         <p className="text-xs opacity-70">FC máx estimada {m.zones.max} bpm (Tanaka){m.restHr ? ` • repouso ${m.restHr} bpm` : ''}</p>
         <div className="mt-1">
@@ -104,7 +104,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
       </div>
 
       {/* PROTEÍNA + CUT */}
-      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+      <div className="rounded-md bg-white/5 border border-white/10 p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-60">Proteína (ISSN) · {m.weight} kg</p>
         <Row label="Manutenção/ganho" value={`${m.prot.base[0]}–${m.prot.base[1]} g/dia`} sub="1,4–2,0 g/kg" />
         <Row label="Em cutting (você)" value={`${m.prot.cut[0]}–${m.prot.cut[1]} g/dia`} tone="good" sub="2,3–3,1 g/kg p/ reter massa magra" />
@@ -112,7 +112,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
       </div>
 
       {m.goalW != null && (
-        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4">
+        <div className="rounded-md bg-emerald-500/10 border border-emerald-500/30 p-4">
           <p className="text-[11px] font-extrabold uppercase tracking-widest text-emerald-400">🎯 Projeção do cut</p>
           <p className="text-sm mt-1">Ritmo saudável: <b>{m.pace.min}–{m.pace.max} kg/sem</b> (0,5–1% do peso).</p>
           <p className="text-sm">Mantendo sua massa magra, <b>{m.goalW} kg ≈ 12% BF</b> em ~<b>{m.weeks} semanas</b>.</p>

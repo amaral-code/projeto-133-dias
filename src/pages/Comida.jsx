@@ -75,7 +75,7 @@ export default function Comida() {
   const confirmCalc = () => {
     if (!picked || !(Number(grams) > 0)) return
     addFoodToMeal(day, open, calc)
-    showToast(`${calc.qty}g lançados: ${calc.kcal} kcal 🍽️`)
+    showToast(`${calc.qty}g lançados: ${calc.kcal} kcal `)
     setOpen(null); setPicked(null)
   }
   const addCustom = () => {
@@ -88,7 +88,7 @@ export default function Comida() {
   return (
     <div className="space-y-4">
       {/* QUANTO COMER HOJE — meta do cronograma */}
-      <div className="rounded-2xl border bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-4">
+      <div className="rounded-lg border bg-emerald-700 text-white p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-80">Quanto comer hoje (Miguel)</p>
         <div className="flex justify-between items-end mt-1">
           <p className="font-black text-2xl">{Math.round(totals.k)} <span className="text-sm font-bold opacity-80">de {TARGETS.kcal} kcal</span></p>
@@ -101,13 +101,13 @@ export default function Comida() {
       {day > 1 && (
         <button onClick={() => {
           const n = repeatYesterday(day)
-          showToast(n > 0 ? `🔁 ${n} ${n === 1 ? 'item repetido' : 'itens repetidos'} de ontem` : 'Nada para repetir de ontem')
-        }} className="w-full min-h-[48px] rounded-2xl border border-dashed border-orange-500/40 text-orange-500 font-black text-sm active:scale-95 flex items-center justify-center gap-2">
+          showToast(n > 0 ? `${n} ${n === 1 ? 'item repetido' : 'itens repetidos'} de ontem` : 'Nada para repetir de ontem')
+        }} className="w-full min-h-[48px] rounded-lg border border-dashed border-input text-primary font-black text-sm active:scale-95 flex items-center justify-center gap-2">
           <Icon name="repeat" size={15} /> Repetir o que comi ontem
         </button>
       )}
       {/* RESUMO FIXO — acompanha a rolagem no celular */}
-      <div className="sticky top-2 z-20 bg-white dark:bg-[#1E293B] rounded-2xl border p-4 sm:p-5 shadow-lg">
+      <div className="sticky top-2 z-20 bg-card rounded-lg border p-4 sm:p-5">
         <div className="flex justify-between items-center">
           <h2 className="font-black text-base sm:text-lg">Dia {day} — {Math.round(totals.k)} / {TARGETS.kcal} kcal</h2>
           <span className={`text-xs font-black px-2.5 py-1.5 rounded-full ${remain >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
@@ -119,7 +119,7 @@ export default function Comida() {
           <div>P {Math.round(totals.pr)}g/{TARGETS.protein}g{bar(totals.pr, TARGETS.protein, 'bg-emerald-500')}</div>
           <div>C {Math.round(totals.c)}g/{TARGETS.carbs}g{bar(totals.c, TARGETS.carbs, 'bg-amber-500')}</div>
           <div>G {Math.round(totals.f)}g/{TARGETS.fat}g{bar(totals.f, TARGETS.fat, 'bg-blue-500')}</div>
-          <div>Kcal {Math.round(totals.k)}/{TARGETS.kcal}{bar(totals.k, TARGETS.kcal, 'bg-orange-500')}</div>
+          <div>Kcal {Math.round(totals.k)}/{TARGETS.kcal}{bar(totals.k, TARGETS.kcal, 'bg-primary')}</div>
         </div>
       </div>
 
@@ -130,7 +130,7 @@ export default function Comida() {
         const kcal = items.reduce((a, b) => a + b.kcal, 0)
         const isCollapsed = !!collapsed[m.id]
         return (
-          <div key={m.id} className={`rounded-2xl border bg-white dark:bg-[#1E293B] overflow-hidden ${eaten ? 'border-emerald-500/50' : ''}`}>
+          <div key={m.id} className={`rounded-lg border bg-card overflow-hidden ${eaten ? 'border-emerald-500/50' : ''}`}>
             <button onClick={() => setCollapsed({ ...collapsed, [m.id]: !isCollapsed })}
               className="w-full p-4 flex justify-between items-center gap-2 text-left min-h-[64px]">
               <div className="flex items-center gap-3">
@@ -146,12 +146,12 @@ export default function Comida() {
             {!isCollapsed && (
               <div className="px-4 pb-4">
                 <div className="grid grid-cols-2 gap-2 mb-3">
-                  <button onClick={() => openSheet(m.id)} className="min-h-[52px] rounded-xl bg-orange-500 text-white font-black text-sm active:scale-95">+ Lançar comida</button>
-                  <button onClick={() => toggleMealEaten(day, m.id)} className={`min-h-[52px] rounded-xl font-black text-sm active:scale-95 ${eaten ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30'}`}>{eaten ? '✓ Comido' : 'Marcar comido'}</button>
+                  <button onClick={() => openSheet(m.id)} className="min-h-[52px] rounded-md bg-primary text-primary-foreground font-black text-sm active:scale-95">+ Lançar comida</button>
+                  <button onClick={() => toggleMealEaten(day, m.id)} className={`min-h-[52px] rounded-md font-black text-sm active:scale-95 ${eaten ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30'}`}>{eaten ? '✓ Comido' : 'Marcar comido'}</button>
                 </div>
                 <div className="space-y-1.5">
                   {items.map((it, idx) => (
-                    <div key={it.base ? `b-${idx}` : it.id} className="flex justify-between items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-900/40 border p-3">
+                    <div key={it.base ? `b-${idx}` : it.id} className="flex justify-between items-center gap-2 rounded-md bg-slate-50 dark:bg-slate-900/40 border p-3">
                       <span className="font-bold text-sm">{it.name} <span className="block font-normal opacity-60 text-xs">{it.qty} {it.unit} • {it.kcal} kcal</span></span>
                       <span className="flex items-center gap-2 shrink-0 text-xs">
                         <span className="opacity-60 text-right">P{it.prot}<br />C{it.carb} G{it.fat}</span>
@@ -168,26 +168,26 @@ export default function Comida() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4" onClick={() => setOpen(null)}>
-          <div className="w-full sm:max-w-lg bg-white dark:bg-[#1E293B] rounded-t-3xl sm:rounded-3xl p-5 max-h-[92dvh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full sm:max-w-lg bg-card rounded-t-lg sm:rounded-lg p-5 max-h-[92dvh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-black text-base">Lançar em: {MEALS.find((m) => m.id === open)?.title}</h3>
 
             {!picked ? (
               <>
                 {/* CÓDIGO DE BARRAS — Open Food Facts */}
-                <div className="mt-2 rounded-xl border border-blue-500/30 bg-blue-500/5 p-2.5">
-                  <p className="text-[11px] font-black opacity-70">📷 Código de barras (Open Food Facts)</p>
+                <div className="mt-2 rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
+                  <p className="text-[11px] font-black opacity-70">Código de barras (Open Food Facts)</p>
                   <div className="flex gap-2 mt-1.5">
                     <input value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" placeholder="Ex: 7894900010015"
-                      className="flex-1 min-h-[52px] px-4 rounded-xl bg-slate-100 dark:bg-slate-900 border font-mono text-center" />
+                      className="flex-1 min-h-[52px] px-4 rounded-md bg-slate-100 dark:bg-slate-900 border font-mono text-center" />
                     <button onClick={searchBarcode} disabled={barcode.replace(/\D/g, '').length < 8 || offStatus === 'loading'}
-                      className="min-h-[52px] px-5 rounded-xl bg-blue-500 text-white font-black disabled:opacity-40 active:scale-95">
+                      className="min-h-[52px] px-5 rounded-md bg-blue-500 text-white font-black disabled:opacity-40 active:scale-95">
                       {offStatus === 'loading' ? '…' : 'Buscar'}
                     </button>
                   </div>
                   {offStatus === 'error' && <p className="text-[11px] text-red-500 font-bold mt-1">Não achei esse código — confira os números ou cadastre avulso abaixo.</p>}
                   {offFood && (
                     <button onClick={() => pick(foodParaItemRefeicao(offFood))}
-                      className="mt-2 w-full min-h-[56px] px-3 py-2 rounded-xl bg-blue-500/10 text-left border border-blue-500/40 active:scale-[0.99] flex justify-between items-center gap-2">
+                      className="mt-2 w-full min-h-[56px] px-3 py-2 rounded-md bg-blue-500/10 text-left border border-blue-500/40 active:scale-[0.99] flex justify-between items-center gap-2">
                       <span className="font-bold text-sm">{offFood.nome}{offFood.marca ? ` (${offFood.marca})` : ''}
                         <span className="block text-[11px] font-normal opacity-60">100g = {offFood.calorias_100g} kcal • P{offFood.proteinas_100g} C{offFood.carboidratos_100g} G{offFood.gorduras_100g}{offFood.nutri_score ? ` • Nutri-Score ${offFood.nutri_score}` : ''}</span>
                       </span>
@@ -196,26 +196,26 @@ export default function Comida() {
                   )}
                 </div>
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="O que você comeu? (ex: frango, arroz…)"
-                  className="mt-2 w-full min-h-[52px] px-4 rounded-xl bg-slate-100 dark:bg-slate-900 border text-sm" />
+                  className="mt-2 w-full min-h-[52px] px-4 rounded-md bg-slate-100 dark:bg-slate-900 border text-sm" />
                 <div className="mt-3 space-y-1.5 max-h-64 overflow-auto">
                   {filtered.map((f) => (
                     <button key={f.name} onClick={() => pick(f)}
-                      className="w-full min-h-[56px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-left border active:scale-[0.99] flex justify-between items-center gap-2">
+                      className="w-full min-h-[56px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 text-left border active:scale-[0.99] flex justify-between items-center gap-2">
                       <span className="font-bold text-sm">{f.name}<span className="block text-[11px] font-normal opacity-60">{f.unit} = {f.kcal} kcal</span></span>
-                      <span className="font-black text-orange-500">›</span>
+                      <span className="font-black text-primary">›</span>
                     </button>
                   ))}
                   {!filtered.length && !tacoHits.length && <p className="text-xs opacity-60">Nada encontrado — cadastre abaixo.</p>}
                 </div>
                 {tacoHits.length > 0 && (
                   <>
-                    <p className="text-[11px] font-black mt-3 mb-1 opacity-60">🌐 TACO + salvos ({tacoHits.length})</p>
+                    <p className="text-[11px] font-black mt-3 mb-1 opacity-60">TACO + salvos ({tacoHits.length})</p>
                     <div className="space-y-1.5 max-h-56 overflow-auto">
                       {tacoHits.map((f) => {
                         const item = foodParaItemRefeicao(f)
                         return (
                           <button key={f.id} onClick={() => pick(item)}
-                            className="w-full min-h-[56px] px-3 py-2 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 text-left border border-emerald-500/30 active:scale-[0.99] flex justify-between items-center gap-2">
+                            className="w-full min-h-[56px] px-3 py-2 rounded-md bg-emerald-500/5 dark:bg-emerald-950/20 text-left border border-emerald-500/30 active:scale-[0.99] flex justify-between items-center gap-2">
                             <span className="font-bold text-sm">{f.nome}<span className="block text-[11px] font-normal opacity-60">100g = {f.calorias_100g} kcal • P{f.proteinas_100g} C{f.carboidratos_100g} G{f.gorduras_100g}{f.fonte === 'LOCAL' ? ' • salvo' : ''}</span></span>
                             <span className="font-black text-emerald-500">›</span>
                           </button>
@@ -224,59 +224,59 @@ export default function Comida() {
                     </div>
                   </>
                 )}
-                {q.trim().length >= 2 && tacoStatus === 'loading' && <p className="text-[11px] opacity-50 mt-1">🌐 Buscando alimentos…</p>}
+                {q.trim().length >= 2 && tacoStatus === 'loading' && <p className="text-[11px] opacity-50 mt-1">Buscando alimentos…</p>}
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-xs font-black mb-2">+ Comida avulsa (vale da refeição)</p>
-                  <input value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} placeholder="Nome do que você comeu" className="w-full min-h-[52px] px-3 rounded-xl bg-slate-100 dark:bg-slate-900 border text-sm mb-2" />
+                  <input value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} placeholder="Nome do que você comeu" className="w-full min-h-[52px] px-3 rounded-md bg-slate-100 dark:bg-slate-900 border text-sm mb-2" />
                   <div className="grid grid-cols-4 gap-2">
                     {[['kcal', 'Kcal'], ['prot', 'Prot'], ['carb', 'Carb'], ['fat', 'Gord']].map(([k, l]) => (
                       <label key={k} className="text-[11px] font-bold">{l}
                         <input type="number" value={custom[k]} onChange={(e) => setCustom({ ...custom, [k]: e.target.value })}
-                          className="mt-0.5 w-full min-h-[48px] px-2 rounded-xl bg-slate-100 dark:bg-slate-900 border text-sm text-center" />
+                          className="mt-0.5 w-full min-h-[48px] px-2 rounded-md bg-slate-100 dark:bg-slate-900 border text-sm text-center" />
                       </label>
                     ))}
                   </div>
-                  <button onClick={addCustom} className="mt-2 w-full min-h-[52px] rounded-xl bg-orange-500 text-white font-black">Adicionar</button>
+                  <button onClick={addCustom} className="mt-2 w-full min-h-[52px] rounded-md bg-primary text-primary-foreground font-black">Adicionar</button>
                 </div>
               </>
             ) : (
               <>
-                <button onClick={() => setPicked(null)} className="mt-1 text-xs font-bold text-orange-500">‹ trocar alimento</button>
+                <button onClick={() => setPicked(null)} className="mt-1 text-xs font-bold text-primary">‹ trocar alimento</button>
                 <h4 className="font-extrabold text-lg mt-1">{picked.name}</h4>
                 <p className="text-xs opacity-60">Porção-base: {picked.unit} = {picked.kcal} kcal</p>
 
                 <div className="grid grid-cols-4 gap-2 mt-3">
                   {portionPresets(picked).map((pr) => (
                     <button key={pr.mult} onClick={() => setGrams(String(pr.grams))}
-                      className={`min-h-[52px] rounded-xl border font-black text-sm ${Number(grams) === pr.grams ? 'bg-orange-500 text-white border-orange-500' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                      className={`min-h-[52px] rounded-md border font-black text-sm ${Number(grams) === pr.grams ? 'bg-primary text-primary-foreground border-orange-500' : 'bg-slate-100 dark:bg-slate-800'}`}>
                       {pr.mult}×<span className="block text-[10px] font-normal">{pr.grams}g</span>
                     </button>
                   ))}
                 </div>
 
                 <div className="flex items-center gap-2 mt-3">
-                  <button onClick={() => setGrams(String(Math.max(0, (Number(grams) || 0) - 10)))} className="min-w-[56px] min-h-[56px] rounded-xl bg-slate-100 dark:bg-slate-800 font-black text-xl">−</button>
+                  <button onClick={() => setGrams(String(Math.max(0, (Number(grams) || 0) - 10)))} className="min-w-[56px] min-h-[56px] rounded-md bg-slate-100 dark:bg-slate-800 font-black text-xl">−</button>
                   <label className="flex-1 text-center text-xs font-bold">Gramas que você comeu
                     <input type="number" value={grams} onChange={(e) => setGrams(e.target.value)}
-                      className="mt-1 w-full min-h-[56px] rounded-xl bg-slate-100 dark:bg-slate-900 border font-black text-xl text-center" />
+                      className="mt-1 w-full min-h-[56px] rounded-md bg-slate-100 dark:bg-slate-900 border font-black text-xl text-center" />
                   </label>
-                  <button onClick={() => setGrams(String((Number(grams) || 0) + 10))} className="min-w-[56px] min-h-[56px] rounded-xl bg-slate-100 dark:bg-slate-800 font-black text-xl">+</button>
+                  <button onClick={() => setGrams(String((Number(grams) || 0) + 10))} className="min-w-[56px] min-h-[56px] rounded-md bg-slate-100 dark:bg-slate-800 font-black text-xl">+</button>
                 </div>
 
                 {calc && (
-                  <div className="mt-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-4 text-center">
+                  <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-4 text-center">
                     <p className="text-3xl font-black">{calc.kcal}<span className="text-sm font-bold"> kcal</span></p>
                     <p className="text-sm font-bold mt-1">P {calc.prot}g • C {calc.carb}g • G {calc.fat}g</p>
                     <p className="text-[11px] opacity-60">em {calc.qty}g</p>
                   </div>
                 )}
                 <button onClick={confirmCalc} disabled={!(Number(grams) > 0)}
-                  className="mt-3 w-full min-h-[56px] rounded-xl bg-orange-500 text-white font-black text-base disabled:opacity-40 active:scale-95">
+                  className="mt-3 w-full min-h-[56px] rounded-md bg-primary text-primary-foreground font-black text-base disabled:opacity-40 active:scale-95">
                   ✓ Lançar {grams || 0}g na refeição
                 </button>
               </>
             )}
-            <button onClick={() => setOpen(null)} className="mt-2 w-full min-h-[48px] rounded-xl border font-bold">Fechar</button>
+            <button onClick={() => setOpen(null)} className="mt-2 w-full min-h-[48px] rounded-md border font-bold">Fechar</button>
           </div>
         </div>
       )}

@@ -1,6 +1,5 @@
-// Design system — componentes visuais únicos do app.
-// Ícones SVG próprios (stroke), cards, botões e barras consistentes.
-// Regra: nada de emoji como ícone de interface — use <Icon>.
+// Design system shadcn-style — neutro, solido, sem gradiente.
+// Regra: nada de emoji como icone de interface — use <Icon>.
 
 const PATHS = {
   home: <><path d="M3 9.5 12 2.5l9 7V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></>,
@@ -36,6 +35,8 @@ const PATHS = {
   book: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z" />,
   phone: <><rect x="7" y="2" width="10" height="20" rx="2.5" /><line x1="11" y1="18.5" x2="13" y2="18.5" /></>,
   pencil: <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>,
 }
 
 export function Icon({ name, size = 18, strokeWidth = 2, className = '' }) {
@@ -48,20 +49,20 @@ export function Icon({ name, size = 18, strokeWidth = 2, className = '' }) {
   )
 }
 
-// Cartão padrão — uma borda, um raio, um padding. Use em todas as telas.
-export function Card({ className = '', children, tint = false, edge = null }) {
+// Card shadcn: borda 1px, raio 8px, sem sombra colorida.
+export function Card({ className = '', children }) {
   return (
-    <div className={`rounded-2xl border bg-white dark:bg-[#1E293B] border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm ${tint ? 'bg-slate-50 dark:bg-slate-900/40' : ''} ${edge ? `border-l-4 ${edge}` : ''} ${className}`}>
-      {children}
+    <div className={`rounded-lg border bg-card text-card-foreground ${className}`}>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
 
 export function SectionTitle({ icon, children, right }) {
   return (
-    <div className="flex justify-between items-center gap-2">
-      <h3 className="font-extrabold text-[15px] flex items-center gap-2">
-        {icon && <span className="text-orange-500"><Icon name={icon} size={17} /></span>}
+    <div className="flex items-center justify-between gap-2">
+      <h3 className="text-sm font-semibold leading-none tracking-tight flex items-center gap-2">
+        {icon && <span className="text-muted-foreground"><Icon name={icon} size={16} /></span>}
         {children}
       </h3>
       {right}
@@ -69,47 +70,45 @@ export function SectionTitle({ icon, children, right }) {
   )
 }
 
-// Botão primário/fantasma/perigo — altura e peso únicos (48–52px).
+// Button shadcn: h-10, rounded-md, text-sm font-medium, sem sombra.
 export function Btn({ variant = 'primary', className = '', ...props }) {
-  const base = 'min-h-[50px] rounded-xl font-extrabold text-sm inline-flex items-center justify-center gap-2 px-4 active:scale-[0.98] transition disabled:opacity-40'
+  const base = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-10 px-4 [&_svg]:size-4 [&_svg]:shrink-0'
   const kinds = {
-    primary: 'bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/25',
-    dark: 'bg-slate-900 dark:bg-white text-white dark:text-slate-900',
-    ghost: 'border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800',
-    success: 'bg-emerald-500 hover:bg-emerald-600 text-white',
-    dangerSoft: 'bg-red-500/10 text-red-500 border border-red-500/30',
+    primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
+    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+    ghost: 'hover:bg-accent hover:text-accent-foreground',
+    success: 'bg-emerald-600 text-white hover:bg-emerald-600/90',
+    dangerSoft: 'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:text-red-300',
   }
   return <button className={`${base} ${kinds[variant] ?? kinds.primary} ${className}`} {...props} />
 }
 
-// Barra de progresso fina e consistente.
-export function Bar({ value = 0, className = '', track = 'bg-slate-100 dark:bg-slate-800' }) {
+// Progress shadcn: trilha muted, fill solido.
+export function Bar({ value = 0, className = '', track = '' }) {
   return (
-    <div className={`h-2 rounded-full overflow-hidden ${track} ${className}`}>
-      <div className="h-full rounded-full bg-current transition-all duration-500" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+    <div className={`h-2 w-full overflow-hidden rounded-full bg-secondary ${track} ${className}`}>
+      <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
     </div>
   )
 }
 
-// Missão/quest com ícone SVG e checkbox animado.
-export function QuestRow({ icon, title, sub, done, onToggle, accent = 'emerald' }) {
-  const ring = accent === 'blue'
-    ? (done ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40')
-    : (done ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40')
+// Checkbox row shadcn: borda, hover muted, sem wash colorido.
+export function QuestRow({ icon, title, sub, done, onToggle }) {
   return (
     <button onClick={onToggle}
-      className={`w-full min-h-[60px] flex items-center justify-between p-3 rounded-xl border text-left active:scale-[0.99] transition ${ring}`}>
-      <span className="flex items-center gap-3 min-w-0">
-        <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${done ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-200/70 dark:bg-slate-700/60 text-slate-500 dark:text-slate-300'}`}>
-          <Icon name={icon} size={18} />
+      className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/50 min-h-[60px]">
+      <span className="flex min-w-0 items-center gap-3">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${done ? 'border-transparent bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+          <Icon name={icon} size={17} />
         </span>
         <span className="min-w-0">
-          <span className={`block text-sm font-bold leading-tight ${done ? 'line-through opacity-60' : ''}`}>{title}</span>
-          <span className="block text-xs opacity-60 mt-0.5">{sub}</span>
+          <span className={`block text-sm font-medium leading-tight ${done ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">{sub}</span>
         </span>
       </span>
-      <span className={`w-7 h-7 rounded-lg flex items-center justify-center border shrink-0 font-black ${done ? 'bg-emerald-500 text-white border-emerald-500 check-pop' : 'bg-white dark:bg-slate-800 text-transparent'}`}>
-        <Icon name="check" size={15} strokeWidth={3} />
+      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${done ? 'border-primary bg-primary text-primary-foreground check-pop' : 'bg-background text-transparent'}`}>
+        <Icon name="check" size={13} strokeWidth={3} />
       </span>
     </button>
   )

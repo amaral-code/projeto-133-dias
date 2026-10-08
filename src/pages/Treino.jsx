@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PROGRAM, setsForBlock } from '../data/program'
 import { blockForWeek } from '../data/blocks'
 import { buildCardio } from '../data/cardio'
@@ -7,9 +7,152 @@ import { useProgressTracking } from '../hooks/useProgressTracking'
 import { useWorkoutTimer } from '../hooks/useWorkoutTimer'
 import { suggestNextLoad, lastSessionFor } from '../lib/doubleProgression'
 import { sessionVolume, formatKg } from '../lib/metrics'
+import { sfx } from '../lib/sound'
 import { Icon } from '../components/ui'
+import { SurfaceCard, MotionWrapper, MotionStagger, MotionItem, MetricBadge } from '../components/system'
 
 const mmss = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+
+function TreinoSkeleton() {
+  const block = 'animate-pulse rounded-xl border border-white/[0.08] bg-[#1C211E]/60'
+  return (
+    <div className="space-y-[18px]" aria-label="Carregando treino">
+      <div className={`${block} h-40`} />
+      <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-6">
+        <div className={`${block} h-96 lg:col-span-4`} />
+        <div className={`${block} h-96 lg:col-span-2`} />
+      </div>
+    </div>
+  )
+}
+
+function DeltaTag({ value, suffix = '%' }) {
+  const v = Number(value) || 0
+  const good = v >= 0
+  return (
+    <span
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[11px] font-medium tabular-nums ${
+        good
+          ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
+          : 'border-red-400/20 bg-red-400/10 text-red-300'
+      }`}
+    >
+      {v > 0 ? '+' : ''}
+      {v.toFixed(1)}
+      {suffix}
+    </span>
+  )
+}
+
+/* Controle embutido Origin UI: - / valor mono / + */
+function Stepper({ value, onChange, step = 1, min = 0, ariaLabel = 'Ajustar valor', format }) {
+  const num = Number(value) || 0
+  const show = format ? format(value) : String(value ?? '')
+  return (
+    <div className="flex h-11 items-center rounded-md border border-white/[0.08] bg-white/[0.03] transition-colors focus-within:border-primary hover:border-white/[0.14]">
+      <button
+        onClick={() => onChange(Number((num - step).toFixed(2)))}
+        aria-label={`Diminuir ${ariaLabel}`}
+        className="flex h-full w-9 shrink-0 items-center justify-center text-base text-zinc-400 transition-colors hover:text-zinc-100 active:scale-[0.98]"
+      >
+        −
+      </button>
+      <input
+        type="number"
+        step={step}
+        inputMode="decimal"
+        value={show}
+        placeholder="0"
+        aria-label={ariaLabel}
+        onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+        className="h-full w-full min-w-0 bg-transparent text-center font-mono text-sm tabular-nums outline-none placeholder:text-zinc-600"
+      />
+      <button
+        onClick={() => onChange(Number((num + step).toFixed(2)))}
+        aria-label={`Aumentar ${ariaLabel}`}
+        className="flex h-full w-9 shrink-0 items-center justify-center text-base text-zinc-400 transition-colors hover:text-zinc-100 active:scale-[0.98]"
+      >
+        +
+      </button>
+    </div>
+  )
+}
+
+function SetRow({ ex, s, prev, day, defaultLoad, timer }) {
+  const logSet = useAppStore((st) => st.logSet)
+  const removeSet = useAppStore((st) => st.removeSet)
+  const setLoad = useAppStore((st) => st.setLoad)
+  const showToast = useAppStore((st) => st.showToast)
+  const daySets = useAppStore((st) => st.days[day]?.sets ?? [])
+  const it = daySets.find((x) => x.exercise === ex.name && x.setNumber === s.setNumber)
+
+  const [reps, setReps] = useState(s.repsTarget[1])
+  const [flash, setFlash] = useState(false)
+  const load = defaultLoad
+  const step = /barra|leg press|hip thrust|agachamento|stiff/i.test(`${ex.name} ${ex.type}`) ? 2.5 : 1
+  const unit = s.timed ? 's' : 'reps'
+
+  const complete = () => {
+    const repsDone = Math.max(0, Number(reps) || 0)
+    logSet(day, { exercise: ex.name, setNumber: s.setNumber, load: Number(load) || 0, repsDone, repsTop: s.repsTarget[1] })
+    sfx.success()
+    setFlash(true)
+    setTimeout(() => setFlash(false), 1200)
+    showToast(`Série ${s.setNumber} salva · descanso ${mmss(s.restSeconds ?? 60)}`)
+    timer.start(s.restSeconds ?? 60, `Descanso — ${ex.name}`)
+  }
+  const uncheck = () => {
+    removeSet(day, ex.name, s.setNumber)
+    sfx.uncheck()
+  }
+
+  return (
+    <div
+      className={`rounded-lg border p-2 transition-colors ${
+        it
+          ? 'border-emerald-400/20 bg-emerald-400/[0.06]'
+          : flash
+            ? 'border-emerald-400/30 bg-emerald-400/[0.08]'
+            : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]'
+      }`}
+    >
+      <div className="grid grid-cols-12 items-center gap-1.5">
+        <span className="col-span-1 pl-1 font-mono text-xs tabular-nums text-zinc-400">#{s.setNumber}</span>
+        <span className="col-span-3 truncate text-center font-mono text-[11px] tabular-nums text-zinc-500">{prev}</span>
+        <div className="col-span-3">
+          <Stepper value={load} onChange={(v) => setLoad(`${ex.name}#${s.setNumber}`, v)} step={step} ariaLabel={`Carga série ${s.setNumber}`} />
+        </div>
+        <div className="col-span-3">
+          <Stepper value={reps} onChange={setReps} step={1} min={0} ariaLabel={`Reps série ${s.setNumber}`} />
+        </div>
+        <span className="col-span-2 flex justify-end">
+          {it ? (
+            <button
+              onClick={uncheck}
+              title="Desmarcar série"
+              className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-500 text-white transition hover:bg-emerald-500/90 active:scale-[0.98]"
+            >
+              <Icon name="check" size={15} strokeWidth={3} />
+            </button>
+          ) : (
+            <button
+              onClick={complete}
+              title="Concluir série"
+              aria-label={`Concluir série ${s.setNumber}`}
+              className="flex h-11 w-11 items-center justify-center rounded-md border border-white/[0.08] text-zinc-500 transition-colors hover:border-primary hover:text-primary active:scale-[0.98]"
+            >
+              <span className="h-3 w-3 rounded-full border-2 border-current" />
+            </button>
+          )}
+        </span>
+      </div>
+      <p className="mt-1 font-mono text-[10px] tabular-nums text-zinc-600">
+        Meta {s.repsTarget[0]}–{s.repsTarget[1]} {unit} · desc. {mmss(s.restSeconds ?? 60)}
+        {it ? ` · feito ${it.repsDone}${s.timed ? 's' : ''} @ ${it.load}kg` : ''}
+      </p>
+    </div>
+  )
+}
 
 function CardioCard({ dayKey, blockIdx, day, timer }) {
   const cardioDone = useAppStore((s) => !!s.days[day]?.cardioDone)
@@ -17,39 +160,91 @@ function CardioCard({ dayKey, blockIdx, day, timer }) {
   const showToast = useAppStore((s) => s.showToast)
   const [openStage, setOpenStage] = useState({})
   const c = useMemo(() => buildCardio(dayKey, blockIdx), [dayKey, blockIdx])
+  const kcalEst = Math.round(c.total * (/HIIT/i.test(c.title) ? 10 : /limiar|resist/i.test(c.title) ? 9 : 7))
 
   return (
-    <div className={`rounded-2xl border p-4 ${cardioDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300' : 'bg-white dark:bg-[#1E293B]'}`}>
-      <div className="flex justify-between items-start gap-2">
-        <div>
-          <h4 className="font-extrabold">Cardio — {c.title} {cardioDone && <span className="text-emerald-500">✓</span>}</h4>
-          <p className="text-xs opacity-60">{c.summary} • {c.bpm}{c.dist ? ` • ${c.dist}` : ''}</p>
+    <SurfaceCard>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="truncate text-sm font-semibold tracking-tight">Cardio — {c.title}</h4>
+            {cardioDone && <MetricBadge tone="green" value="feito" pulse={false} />}
+          </div>
+          <p className="mt-0.5 truncate text-xs text-zinc-500">
+            {c.summary} · {c.bpm}
+            {c.dist ? ` · ${c.dist}` : ''}
+          </p>
         </div>
-        <button onClick={() => { setCardioDone(day, !cardioDone); if (!cardioDone) showToast('Cardio feito! +20 XP 🏃') }}
-          className={`min-h-[48px] px-4 rounded-xl font-black text-sm shrink-0 active:scale-95 ${cardioDone ? 'bg-emerald-500 text-white' : 'bg-red-500/10 text-red-500 border border-red-500/30'}`}>
-          {cardioDone ? '✓ Feito' : 'Marcar feito'}
+        <button
+          onClick={() => {
+            setCardioDone(day, !cardioDone)
+            if (!cardioDone) {
+              sfx.success()
+              showToast('Cardio feito · +20 XP')
+            }
+          }}
+          className={`h-10 shrink-0 rounded-md px-3.5 text-xs font-medium transition active:scale-[0.98] ${
+            cardioDone
+              ? 'bg-emerald-500 text-white hover:bg-emerald-500/90'
+              : 'border border-white/[0.08] hover:bg-white/[0.05]'
+          }`}
+        >
+          {cardioDone ? 'Feito' : 'Marcar feito'}
         </button>
       </div>
-      <p className="text-xs opacity-70 mt-1">{c.goal}</p>
-      {c.note && <p className="text-xs mt-1 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2">💡 {c.note}</p>}
-      <div className="mt-2 space-y-1.5">
-        {c.stages.map((s, k) => (
-          <div key={k} className={`flex items-center gap-2 rounded-xl border p-2.5 ${openStage[k] ? 'bg-emerald-500/10 border-emerald-500/40' : ''}`}>
-            <button onClick={() => setOpenStage({ ...openStage, [k]: !openStage[k] })}
-              className={`min-w-[44px] min-h-[44px] rounded-lg font-black ${openStage[k] ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>
-              {openStage[k] ? '✓' : k + 1}
-            </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold leading-tight">{s.label} {s.round && <span className="opacity-50 text-xs">{s.round}</span>}</p>
-              <p className="text-xs opacity-60">{mmss(s.sec)}{s.hint ? ` • ${s.hint}` : ''}</p>
-            </div>
-            <button onClick={() => timer.start(s.sec, `${s.label} — cardio`)}
-              className="min-h-[44px] px-3 rounded-lg bg-orange-500 text-white text-xs font-black shrink-0 active:scale-95 flex items-center gap-1"><Icon name="play" size={12} /> {mmss(s.sec)}</button>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[
+          { label: 'tempo', value: `${c.total} min` },
+          { label: 'intensidade', value: c.bpm.split('·')[0].trim() },
+          { label: 'kcal est.', value: `~${kcalEst}` },
+        ].map((m) => (
+          <div key={m.label} className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">
+            <p className="label">{m.label}</p>
+            <p className="mt-0.5 truncate font-mono text-[13px] tabular-nums text-zinc-100">{m.value}</p>
           </div>
         ))}
       </div>
-      <p className="text-[11px] opacity-50 mt-2">Total ≈ {c.total} min • toque em ▶ para cronometrar cada etapa • marque as etapas e depois “Marcar feito” (+20 XP na missão).</p>
-    </div>
+
+      <p className="mt-2 text-xs text-zinc-500">{c.goal}</p>
+      {c.note && (
+        <p className="mt-1.5 rounded-md border border-amber-400/20 bg-amber-400/[0.06] p-2 text-xs text-amber-200/90">{c.note}</p>
+      )}
+      <div className="mt-2 space-y-1.5">
+        {c.stages.map((st, k) => (
+          <div
+            key={k}
+            className={`flex items-center gap-2 rounded-md border p-2 transition-colors hover:bg-white/[0.04] ${
+              openStage[k] ? 'border-emerald-400/20 bg-emerald-400/[0.05]' : 'border-white/[0.08]'
+            }`}
+          >
+            <button
+              onClick={() => setOpenStage({ ...openStage, [k]: !openStage[k] })}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-mono text-xs tabular-nums transition active:scale-[0.98] ${
+                openStage[k] ? 'bg-emerald-500 text-white' : 'border border-white/[0.08] text-zinc-400'
+              }`}
+            >
+              {openStage[k] ? <Icon name="check" size={13} strokeWidth={3} /> : k + 1}
+            </button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium">
+                {st.label} {st.round && <span className="font-mono text-[11px] tabular-nums text-zinc-500">{st.round}</span>}
+              </p>
+              <p className="font-mono text-[11px] tabular-nums text-zinc-500">
+                {mmss(st.sec)}
+                {st.hint ? ` · ${st.hint}` : ''}
+              </p>
+            </div>
+            <button
+              onClick={() => timer.start(st.sec, `${st.label} — cardio`)}
+              className="flex h-9 shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 font-mono text-[11px] tabular-nums text-primary-foreground transition hover:bg-primary/90 active:scale-[0.98]"
+            >
+              <Icon name="play" size={11} /> {mmss(st.sec)}
+            </button>
+          </div>
+        ))}
+      </div>
+    </SurfaceCard>
   )
 }
 
@@ -66,6 +261,7 @@ export default function Treino({ timer }) {
   const week = Math.ceil(day / 7)
   const block = blockForWeek(week)
   const logSet = useAppStore((s) => s.logSet)
+  void logSet
   const removeSet = useAppStore((s) => s.removeSet)
   const setWorkoutDone = useAppStore((s) => s.setWorkoutDone)
   const setLoad = useAppStore((s) => s.setLoad)
@@ -79,17 +275,23 @@ export default function Treino({ timer }) {
   const [openEx, setOpenEx] = useState({})
   const [modo, setModo] = useState('foco')
   const [focus, setFocus] = useState(0)
-  const [burst, setBurst] = useState(null) // {x, y, key} partículas ao concluir
-  // Dia selecionado compartilhado com a tela Hoje ("Iniciar treino" abre o treino certo)
+  const [booting, setBooting] = useState(true)
+  useEffect(() => {
+    const id = setTimeout(() => setBooting(false), 450)
+    return () => clearTimeout(id)
+  }, [])
+
   const storedKey = useAppStore((s) => s.trainKey)
   const setTrainKey = useAppStore((s) => s.setTrainKey)
   const autoKey = ['SEG', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SEG'][new Date().getDay()] ?? 'SEG'
   const dayKey = storedKey ?? autoKey
-  const setDayKey = (k) => { setTrainKey(k); setFocus(0) }
+  const setDayKey = (k) => {
+    setTrainKey(k)
+    setFocus(0)
+  }
   const plan = PROGRAM[dayKey]
   const done = !!dayLog.workoutDone
 
-  // Séries do bloco atual (nº de séries muda por bloco no cronograma)
   const planSets = useMemo(() => {
     const out = {}
     for (const ex of plan.exercises) out[ex.id] = setsForBlock(ex, block.idx)
@@ -102,11 +304,31 @@ export default function Treino({ timer }) {
   const focusIdx = Math.min(focus, plan.exercises.length - 1)
   const focusEx = plan.exercises[focusIdx]
 
+  const volume = sessionVolume(dayLog.sets ?? [])
+  const prevVolumes = useMemo(() => {
+    const byDay = {}
+    for (const [d, log] of Object.entries(days)) {
+      if (Number(d) === day) continue
+      const v = sessionVolume(log.sets ?? [])
+      if (v > 0) byDay[d] = v
+    }
+    return Object.values(byDay)
+  }, [days, day])
+  const volumeMeta = prevVolumes.length
+    ? Math.round(prevVolumes.reduce((a, b) => a + b, 0) / prevVolumes.length)
+    : totalSets * 320
+  const volumeDelta = volumeMeta ? ((volume - volumeMeta) / volumeMeta) * 100 : 0
+  const cardio = useMemo(() => buildCardio(dayKey, block.idx), [dayKey, block.idx])
+
   const effectiveLoad = (ex, s) => {
     const perSet = loads[`${ex.name}#${s.setNumber}`]
-    if (perSet != null) return perSet
-    if (loads[ex.name] != null) return loads[ex.name]
-    const sug = suggestNextLoad(allSets.filter((x) => x.day !== day), { exerciseName: ex.name, exerciseType: ex.type, baseLoad: 0 })
+    if (perSet != null && perSet !== '') return perSet
+    if (loads[ex.name] != null && loads[ex.name] !== '') return loads[ex.name]
+    const sug = suggestNextLoad(allSets.filter((x) => x.day !== day), {
+      exerciseName: ex.name,
+      exerciseType: ex.type,
+      baseLoad: 0,
+    })
     if (sug.suggested > 0) return sug.suggested
     return ''
   }
@@ -114,12 +336,15 @@ export default function Treino({ timer }) {
   const suggestions = useMemo(() => {
     const out = {}
     for (const ex of plan.exercises) {
-      out[ex.id] = suggestNextLoad(allSets.filter((x) => x.day !== day), { exerciseName: ex.name, exerciseType: ex.type, baseLoad: 0 })
+      out[ex.id] = suggestNextLoad(allSets.filter((x) => x.day !== day), {
+        exerciseName: ex.name,
+        exerciseType: ex.type,
+        baseLoad: 0,
+      })
     }
     return out
   }, [plan, allSets, day])
 
-  // Última sessão de cada exercício (coluna ANTERIOR)
   const prevMap = useMemo(() => {
     const out = {}
     for (const ex of plan.exercises) {
@@ -133,241 +358,439 @@ export default function Treino({ timer }) {
 
   const logged = (exName, n) => (dayLog.sets ?? []).find((x) => x.exercise === exName && x.setNumber === n)
 
-  const burstAt = (e) => {
-    if (!e?.clientX) return
-    setBurst({ x: e.clientX, y: e.clientY, key: Date.now() })
-    setTimeout(() => setBurst(null), 700)
-  }
-
-  const completeSet = (ex, s, e) => {
-    const el = document.getElementById(`reps-${ex.id}-${s.setNumber}`)
-    const repsDone = Math.max(0, Number(el?.value ?? s.repsTarget[1]))
-    const load = effectiveLoad(ex, s)
-    logSet(day, { exercise: ex.name, setNumber: s.setNumber, load: Number(load) || 0, repsDone, repsTop: s.repsTarget[1] })
-    burstAt(e)
-    showToast(`Série ${s.setNumber} salva! Descanso ${mmss(s.restSeconds ?? 60)} ⏱️`)
-    t.start(s.restSeconds ?? 60, `Descanso — ${ex.name}`)
-  }
-
-  const renderSets = (ex, sets, compact = false) => (
-    <div className="space-y-1.5 mt-3">
-      <div className={`grid ${compact ? 'grid-cols-12' : 'grid-cols-[auto_1fr_1fr_auto]'} gap-1.5 items-center px-1 text-[10px] font-bold text-slate-400 uppercase`}>
-        {compact ? (<>
-          <span className="col-span-2">Série</span><span className="col-span-3 text-center">Anterior</span>
-          <span className="col-span-3 text-center">Carga</span><span className="col-span-2 text-center">Reps</span><span className="col-span-2" />
-        </>) : (<>
-          <span className="w-8">S</span><span>Anterior</span><span>Carga / Reps</span><span />
-        </>)}
+  const renderSets = (ex, sets) => (
+    <div className="mt-3 space-y-1.5">
+      <div className="grid grid-cols-12 items-center gap-1.5 px-1">
+        <span className="label col-span-1">Série</span>
+        <span className="label col-span-3 text-center">Anterior</span>
+        <span className="label col-span-3 text-center">Carga kg</span>
+        <span className="label col-span-3 text-center">Reps</span>
+        <span className="col-span-2" />
       </div>
-      {sets.map((s) => {
-        const it = logged(ex.name, s.setNumber)
-        const load = effectiveLoad(ex, s)
-        const unit = s.timed ? 's' : 'reps'
-        const prev = prevMap[ex.id]?.[s.setNumber] ?? '—'
-        return (
-          <div key={s.setNumber} className={`rounded-xl border p-2 ${it ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300' : 'bg-white dark:bg-slate-900/40'}`}>
-            <div className={`grid ${compact ? 'grid-cols-12' : 'grid-cols-[auto_1fr_1fr_auto]'} gap-1.5 items-center`}>
-              <span className={`text-xs font-black ${compact ? 'col-span-2 pl-1' : 'w-8'}`}>#{s.setNumber}</span>
-              <span className={`text-[11px] font-semibold text-slate-400 truncate ${compact ? 'col-span-3 text-center' : ''}`}>{prev}</span>
-              <label className={`text-[11px] font-bold flex items-center gap-1 ${compact ? 'col-span-3' : ''}`}>🏋️
-                <input type="number" step="0.5" inputMode="decimal" placeholder="kg" value={load} onChange={(e) => setLoad(`${ex.name}#${s.setNumber}`, Number(e.target.value))}
-                  className="w-full min-h-[48px] text-center font-bold rounded-lg bg-slate-100 dark:bg-slate-900 border text-sm" />
-              </label>
-              <label className={`text-[11px] font-bold flex items-center gap-1 ${compact ? 'col-span-2' : ''}`}>🔁
-                <input type="number" inputMode="numeric" defaultValue={s.repsTarget[1]} id={`reps-${ex.id}-${s.setNumber}`}
-                  className="w-full min-h-[48px] text-center font-bold rounded-lg bg-slate-100 dark:bg-slate-900 border text-sm" />
-              </label>
-              <span className={compact ? 'col-span-2 flex justify-end' : ''}>
-                {it ? (
-                  <button onClick={() => removeSet(day, ex.name, s.setNumber)} title="Desmarcar"
-                    className="min-w-[48px] min-h-[48px] rounded-lg bg-emerald-500 text-white font-black">✓</button>
-                ) : (
-                  <button onClick={(e) => completeSet(ex, s, e)}
-                    className="min-w-[48px] min-h-[48px] rounded-lg bg-slate-200 dark:bg-slate-700 font-black active:scale-95">○</button>
-                )}
-              </span>
-            </div>
-            <p className="text-[10px] opacity-50 mt-1">Meta {s.repsTarget[0]}–{s.repsTarget[1]} {unit} • descanso {mmss(s.restSeconds ?? 60)}{it ? ` • feito: ${it.repsDone}${s.timed ? 's' : ' reps'} @ ${it.load}kg` : ''}</p>
-          </div>
-        )
-      })}
+      {sets.map((s) => (
+        <SetRow
+          key={s.setNumber}
+          ex={ex}
+          s={s}
+          prev={prevMap[ex.id]?.[s.setNumber] ?? '—'}
+          day={day}
+          defaultLoad={effectiveLoad(ex, s)}
+          timer={t}
+        />
+      ))}
     </div>
   )
 
   const renderExerciseBody = (ex) => {
     const sets = planSets[ex.id]
     const sug = suggestions[ex.id]
-    return (<>
-      {sug.progressed && sug.suggested > 0 && (
-        <div className="mt-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs flex justify-between items-center gap-2">
-          <span className="font-bold text-emerald-600 dark:text-emerald-400">🔼 {sug.reason} Sugestão: {sug.suggested}kg</span>
-          <button onClick={() => setLoad(ex.name, sug.suggested)} className="px-3 py-2 rounded-lg bg-emerald-500 text-white font-bold min-h-[40px] shrink-0">Aplicar</button>
-        </div>
-      )}
-      <p className="mt-2 text-xs opacity-70"><b>Atua:</b> {ex.work}</p>
-      <ol className="mt-1 text-xs opacity-70 list-decimal list-inside space-y-0.5">
-        {ex.steps.map((c) => <li key={c}>{c}</li>)}
-      </ol>
-      {ex.attention && <p className="mt-1 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 p-2">⚠️ {ex.attention}</p>}
-      {ex.alt && <p className="mt-1 text-xs rounded-lg bg-blue-500/10 border border-blue-500/30 p-2">🔄 <b>{ex.alt[0]}:</b> {ex.alt[1]}</p>}
-      {renderSets(ex, sets, true)}
-    </>)
+    return (
+      <>
+        {sug.progressed && sug.suggested > 0 && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-emerald-400/20 bg-emerald-400/[0.06] p-2.5">
+            <span className="text-xs font-medium text-emerald-300">
+              {sug.reason} Sugestão: <span className="font-mono tabular-nums">{sug.suggested}kg</span>
+            </span>
+            <button
+              onClick={() => setLoad(ex.name, sug.suggested)}
+              className="h-9 shrink-0 rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-500/90 active:scale-[0.98]"
+            >
+              Aplicar
+            </button>
+          </div>
+        )}
+        <p className="mt-2 text-xs text-zinc-400">
+          <span className="font-medium text-zinc-300">Atua:</span> {ex.work}
+        </p>
+        <ol className="mt-1 list-decimal list-inside space-y-0.5 text-xs text-zinc-500">
+          {ex.steps.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ol>
+        {ex.attention && (
+          <p className="mt-1.5 rounded-md border border-amber-400/20 bg-amber-400/[0.06] p-2 text-xs text-amber-200/90">{ex.attention}</p>
+        )}
+        {ex.alt && (
+          <p className="mt-1.5 rounded-md border border-blue-400/20 bg-blue-400/[0.06] p-2 text-xs text-blue-200/90">
+            <b>{ex.alt[0]}:</b> {ex.alt[1]}
+          </p>
+        )}
+        {renderSets(ex, sets)}
+      </>
+    )
   }
 
   const modoIdx = SUBTABS.findIndex((x) => x.id === modo)
 
-  return (
-    <div className="space-y-4 pb-24">
-      {burst && (
-        <div className="pointer-events-none fixed inset-0 z-[80]" aria-hidden>
-          {Array.from({ length: 12 }).map((_, k) => {
-            const ang = (k / 12) * Math.PI * 2
-            return <span key={burst.key + k} className="burst-dot"
-              style={{ left: burst.x, top: burst.y, background: ['#F97316', '#10B981', '#FBBF24', '#38BDF8'][k % 4], ['--tx']: `${Math.cos(ang) * (30 + (k % 3) * 15)}px`, ['--ty']: `${Math.sin(ang) * (30 + (k % 3) * 15)}px` }} />
-          })}
-        </div>
-      )}
+  if (booting) return <TreinoSkeleton />
 
-      <div className="sticky top-2 z-20 bg-white dark:bg-[#1E293B] rounded-2xl border p-4 shadow-lg">
-        <div className="grid grid-cols-5 gap-2">
+  return (
+    <div className="space-y-[18px] pb-24">
+      {/* Cabeçalho de sessão ativo */}
+      <SurfaceCard hoverGlow={false}>
+        <div className="grid grid-cols-5 gap-1.5">
           {Object.values(PROGRAM).map((d) => (
-            <button key={d.key} onClick={() => setDayKey(d.key)}
-              className={`py-2 rounded-xl font-extrabold text-xs min-h-[52px] active:scale-95 ${dayKey === d.key ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
-              {d.key}<span className="block text-[10px] font-normal">{d.label}</span>
+            <button
+              key={d.key}
+              onClick={() => setDayKey(d.key)}
+              className={`min-h-[52px] rounded-md py-1.5 text-xs font-semibold transition active:scale-[0.98] ${
+                dayKey === d.key ? 'bg-primary text-primary-foreground' : 'text-zinc-400 hover:bg-white/[0.05]'
+              }`}
+            >
+              {d.key}
+              <span className="block font-mono text-[10px] font-normal tabular-nums opacity-70">{d.label}</span>
             </button>
           ))}
         </div>
-        <div className="flex justify-between items-baseline mt-3 gap-2">
-          <h2 className="text-xl font-black">{plan.name}</h2>
-          <span className={`text-xs font-black px-2 py-1 rounded-full shrink-0 ${pctDone === 100 ? 'bg-emerald-500 text-white' : 'bg-orange-500/10 text-orange-500'}`}>{doneSets.length}/{totalSets} • {pctDone}%</span>
+        <div className="mt-3 flex items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold tracking-tight">{plan.name}</h2>
+          <MetricBadge tone={pctDone === 100 ? 'green' : 'neutral'} value={`${doneSets.length}/${totalSets} · ${pctDone}%`} />
         </div>
-        <p className="text-xs opacity-60 mt-0.5">{plan.sub}</p>
-        <div className="mt-2 h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-orange-500 to-emerald-500 transition-all" style={{ width: `${pctDone}%` }} />
+        <p className="mt-0.5 truncate text-xs text-zinc-500">{plan.sub}</p>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pctDone}%` }} />
         </div>
-        <p className="text-xs opacity-60 mt-1">Dia {day} • {block.name}: {block.sub} • RIR {block.rir}</p>
-        {(dayLog.sets ?? []).length > 0 && (
-          <p className="text-xs font-black mt-1 text-orange-500">🏋️ Volume da sessão: {formatKg(sessionVolume(dayLog.sets))}</p>
-        )}
-        {/* SUB-TABS com glider */}
-        <div className="relative mt-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex text-xs font-bold" style={{ ['--tabs']: SUBTABS.length }}>
+
+        <MotionStagger className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" gap={0.05}>
+          {[
+            { label: 'volume sessão', value: formatKg(volume), extra: <DeltaTag value={volumeDelta} /> },
+            { label: 'séries', value: `${doneSets.length}/${totalSets}`, extra: null },
+            { label: 'cardio', value: `${cardio.total} min`, extra: null },
+            { label: 'bloco · RIR', value: `${block.name} · ${block.rir}`, extra: null },
+          ].map((m) => (
+            <MotionItem key={m.label} className="rounded-md border border-white/[0.08] bg-white/[0.02] p-2">
+              <p className="label">{m.label}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[13px] tabular-nums text-zinc-100">
+                <span className="truncate">{m.value}</span> {m.extra}
+              </p>
+            </MotionItem>
+          ))}
+        </MotionStagger>
+        <p className="mt-2 font-mono text-[11px] tabular-nums text-zinc-600">
+          Dia {day} · meta volume <span className="text-zinc-400">{formatKg(volumeMeta)}</span> (média histórico{prevVolumes.length ? ` · ${prevVolumes.length} sessões` : ' · estimativa'})
+        </p>
+
+        <div className="relative mt-3 flex rounded-md border border-white/[0.08] bg-white/[0.02] p-1 text-xs font-medium" style={{ ['--tabs']: SUBTABS.length }}>
           <div className="tab-glider" style={{ transform: `translateX(${modoIdx * 100}%)` }} />
           {SUBTABS.map((st) => (
-            <button key={st.id} onClick={() => setModo(st.id)}
-              className={`flex-1 py-2 rounded-lg text-center relative z-10 min-h-[44px] ${modo === st.id ? 'text-orange-500' : 'opacity-60'}`}>
+            <button
+              key={st.id}
+              onClick={() => setModo(st.id)}
+              className={`relative z-10 min-h-[40px] flex-1 rounded text-center transition-colors active:scale-[0.98] ${
+                modo === st.id ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
               {st.label}
             </button>
           ))}
         </div>
+      </SurfaceCard>
+
+      <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-6">
+        {modo === 'foco' && (
+          <>
+            <MotionWrapper className="lg:col-span-4" delay={0}>
+              <SurfaceCard key={`${dayKey}-${focusIdx}`}>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[11px] tabular-nums text-zinc-300">
+                    {focusEx.muscle} · {planSets[focusEx.id].length} séries · {focusEx.reps.raw} · desc. {focusEx.rest}
+                  </span>
+                  <span className="shrink-0 font-mono text-[11px] tabular-nums text-zinc-500">
+                    {focusIdx + 1}/{plan.exercises.length}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-base font-semibold leading-snug tracking-tight">
+                    <span className="font-mono tabular-nums text-zinc-500">#{focusIdx + 1}</span> {focusEx.name}
+                  </h4>
+                  <button
+                    onClick={() => setVideo(focusEx)}
+                    className="flex h-10 shrink-0 items-center gap-1 rounded-md border border-white/[0.08] px-2.5 text-xs font-medium transition-colors hover:bg-white/[0.05] active:scale-[0.98]"
+                  >
+                    <Icon name="play" size={11} /> Técnica
+                  </button>
+                </div>
+                <p className="mt-1 w-fit rounded bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] tabular-nums text-zinc-400">RIR {block.rir}</p>
+                {renderExerciseBody(focusEx)}
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setFocus(Math.max(0, focusIdx - 1))}
+                    disabled={focusIdx <= 0}
+                    className="min-h-[48px] rounded-md border border-white/[0.08] text-sm font-medium transition enabled:hover:bg-white/[0.05] enabled:active:scale-[0.98] disabled:opacity-30"
+                  >
+                    ‹ Anterior
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFocus((focusIdx + 1) % plan.exercises.length)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    className="min-h-[48px] rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[0.98]"
+                  >
+                    Próximo ›
+                  </button>
+                </div>
+              </SurfaceCard>
+            </MotionWrapper>
+
+            <div className="space-y-[18px] lg:col-span-2">
+              <SurfaceCard>
+                <h4 className="text-sm font-semibold tracking-tight">Sessão</h4>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-500">Volume</span>
+                    <span className="flex items-center gap-1.5 font-mono tabular-nums text-zinc-100">
+                      {formatKg(volume)} <DeltaTag value={volumeDelta} />
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${Math.min(100, (volume / (volumeMeta || 1)) * 100)}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-500">Séries</span>
+                    <span className="font-mono tabular-nums text-zinc-100">
+                      {doneSets.length}/{totalSets} · {pctDone}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${pctDone}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-500">Cardio</span>
+                    <span className="font-mono tabular-nums text-zinc-100">{cardio.total} min · {cardio.title}</span>
+                  </div>
+                  {t.running || t.remainingMs > 0 ? (
+                    <p className="rounded-md border border-white/[0.08] bg-white/[0.03] p-2 font-mono text-xs tabular-nums text-zinc-200">
+                      {t.label} · {t.mm}:{String(t.ss).padStart(2, '0')}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-zinc-600">Cronômetro livre — inicie pelo descanso de uma série ou etapa do cardio.</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setWorkoutDone(day, !done)
+                    showToast(done ? 'Treino reaberto' : 'Treino concluído · +50 XP')
+                  }}
+                  className={`mt-3 min-h-[48px] w-full rounded-md text-sm font-medium transition active:scale-[0.98] ${
+                    done ? 'bg-emerald-500 text-white hover:bg-emerald-500/90' : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  }`}
+                >
+                  {done ? 'Concluído — tocar p/ reabrir' : 'Concluir treino (+50 XP)'}
+                </button>
+              </SurfaceCard>
+              <CardioCard dayKey={dayKey} blockIdx={block.idx} day={day} timer={t} />
+            </div>
+          </>
+        )}
+
+        {modo === 'ficha' && (
+          <>
+            <div className="space-y-2.5 lg:col-span-4">
+              <MotionStagger className="space-y-2.5" gap={0.04}>
+                {plan.exercises.map((ex, i) => {
+                  const sets = planSets[ex.id]
+                  const exDone = sets.every((s) => logged(ex.name, s.setNumber))
+                  const collapsed = openEx[ex.id] ?? exDone
+                  const exDoneCount = sets.filter((s) => logged(ex.name, s.setNumber)).length
+                  return (
+                    <MotionItem key={ex.id}>
+                      <SurfaceCard padding="sm" hoverGlow={false} className={exDone ? 'border-emerald-400/20' : ''}>
+                        <button
+                          onClick={() => setOpenEx({ ...openEx, [ex.id]: !collapsed })}
+                          className="flex min-h-[48px] w-full items-start justify-between gap-2 rounded-md p-1 text-left transition-colors hover:bg-white/[0.03] active:scale-[0.99]"
+                        >
+                          <div className="min-w-0">
+                            <h4 className="truncate text-sm font-semibold tracking-tight">
+                              <span className="font-mono tabular-nums text-zinc-500">#{i + 1}</span> {ex.name}{' '}
+                              {exDone && <span className="text-emerald-400">✓</span>}
+                            </h4>
+                            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-500">
+                              {exDoneCount}/{sets.length} séries · {ex.reps.raw} · desc. {ex.rest}
+                            </p>
+                          </div>
+                          <span className="flex shrink-0 items-center gap-2">
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setVideo(ex)
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') setVideo(ex)
+                              }}
+                              className="flex min-h-[40px] items-center gap-1 rounded-md border border-white/[0.08] px-2.5 text-xs font-medium transition-colors hover:bg-white/[0.05] active:scale-[0.98]"
+                            >
+                              <Icon name="video" size={13} /> Vídeo
+                            </span>
+                            <span className="text-lg text-zinc-500">{collapsed ? '›' : '⌄'}</span>
+                          </span>
+                        </button>
+                        {!collapsed && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setFocus(i)
+                                setModo('foco')
+                                window.scrollTo({ top: 0 })
+                              }}
+                              className="mt-1 px-1 text-xs font-medium text-primary transition hover:underline active:scale-[0.98]"
+                            >
+                              Focar neste ›
+                            </button>
+                            {renderExerciseBody(ex)}
+                          </>
+                        )}
+                      </SurfaceCard>
+                    </MotionItem>
+                  )
+                })}
+              </MotionStagger>
+            </div>
+            <div className="space-y-[18px] lg:col-span-2">
+              <SurfaceCard>
+                <h4 className="text-sm font-semibold tracking-tight">Sessão</h4>
+                <p className="mt-1 font-mono text-xs tabular-nums text-zinc-400">
+                  {doneSets.length}/{totalSets} séries · {formatKg(volume)}
+                </p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pctDone}%` }} />
+                </div>
+                <button
+                  onClick={() => {
+                    setWorkoutDone(day, !done)
+                    showToast(done ? 'Treino reaberto' : 'Treino concluído · +50 XP')
+                  }}
+                  className={`mt-3 min-h-[48px] w-full rounded-md text-sm font-medium transition active:scale-[0.98] ${
+                    done ? 'bg-emerald-500 text-white hover:bg-emerald-500/90' : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  }`}
+                >
+                  {done ? 'Concluído — tocar p/ reabrir' : 'Concluir treino (+50 XP)'}
+                </button>
+              </SurfaceCard>
+              <CardioCard dayKey={dayKey} blockIdx={block.idx} day={day} timer={t} />
+            </div>
+          </>
+        )}
+
+        {modo === 'registros' && (
+          <MotionWrapper className="lg:col-span-6" delay={0}>
+            <SurfaceCard>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold tracking-tight">Séries de hoje</h4>
+                <MetricBadge tone={doneSets.length ? 'green' : 'neutral'} value={`${doneSets.length} · ${formatKg(volume)}`} />
+              </div>
+              {(dayLog.sets ?? []).length === 0 && (
+                <p className="mt-1 text-xs text-zinc-500">Nenhuma série concluída ainda hoje.</p>
+              )}
+              <div className="mt-2 max-h-96 space-y-1.5 overflow-auto">
+                {[...(dayLog.sets ?? [])].reverse().map((s, k) => (
+                  <div
+                    key={k}
+                    className="flex items-center justify-between rounded-md border border-white/[0.08] bg-white/[0.02] p-2.5 text-xs transition-colors hover:bg-white/[0.05]"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 font-mono text-[10px] text-emerald-300">
+                        ✓
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-[12px] font-medium">{s.exercise}</p>
+                        <span className="font-mono tabular-nums text-zinc-500">
+                          S{s.setNumber} · {s.load}kg × {s.repsDone}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        removeSet(day, s.exercise, s.setNumber)
+                        sfx.uncheck()
+                      }}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-lg text-zinc-500 transition-colors hover:bg-white/[0.05] hover:text-red-300 active:scale-[0.98]"
+                      title="Desfazer"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </SurfaceCard>
+          </MotionWrapper>
+        )}
       </div>
 
-      {modo === 'foco' && (
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl border p-4 stagger-1" key={`${dayKey}-${focusIdx}`}>
-          <div className="flex items-center justify-between gap-1 mb-1">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-orange-500/10 text-orange-500 border border-orange-500/30">
-              ● {focusEx.muscle} · {planSets[focusEx.id].length} séries · {focusEx.reps.raw} · desc. {focusEx.rest}
-            </span>
-            <span className="text-xs font-black opacity-50 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0">{focusIdx + 1} de {plan.exercises.length}</span>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <h4 className="font-black text-base leading-snug">#{focusIdx + 1} {focusEx.name}</h4>
-            <button onClick={() => setVideo(focusEx)} className="text-[11px] font-bold text-red-500 bg-red-500/10 px-2.5 py-2 rounded-lg border border-red-500/30 shrink-0 min-h-[44px] flex items-center gap-1"><Icon name="play" size={11} /> Técnica</button>
-          </div>
-          <p className="mt-1 text-[10px] font-extrabold opacity-60 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md w-fit">RIR {block.rir}</p>
-          {renderExerciseBody(focusEx)}
-          <div className="grid grid-cols-2 gap-2 mt-3">
-            <button onClick={() => setFocus(Math.max(0, focusIdx - 1))} disabled={focusIdx <= 0}
-              className="min-h-[52px] rounded-xl border font-black disabled:opacity-30 active:scale-95">‹ Anterior</button>
-            <button onClick={() => { setFocus((focusIdx + 1) % plan.exercises.length); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-              className="min-h-[52px] rounded-xl bg-orange-500 text-white font-black active:scale-95">Próximo ›</button>
-          </div>
+      {modo === 'ficha' && (
+        <div className="lg:hidden">
+          <CardioCard dayKey={dayKey} blockIdx={block.idx} day={day} timer={t} />
         </div>
       )}
-
-      {modo === 'ficha' && plan.exercises.map((ex, i) => {
-        const sets = planSets[ex.id]
-        const exDone = sets.every((s) => logged(ex.name, s.setNumber))
-        const collapsed = openEx[ex.id] ?? exDone
-        return (
-          <div key={ex.id} className={`bg-white dark:bg-[#1E293B] rounded-2xl border p-4 ${exDone ? 'border-emerald-500/50' : ''}`}>
-            <button onClick={() => setOpenEx({ ...openEx, [ex.id]: !collapsed })} className="w-full flex justify-between items-start gap-2 text-left min-h-[48px]">
-              <div>
-                <h4 className="font-extrabold">#{i + 1} {ex.name} {exDone && <span className="text-emerald-500">✓</span>}</h4>
-                <p className="text-xs opacity-60">{ex.muscle} • {sets.filter((s) => logged(ex.name, s.setNumber)).length}/{sets.length} séries • {ex.reps.raw} • desc. {ex.rest}{collapsed ? ' • toque p/ abrir' : ''}</p>
-              </div>
-              <span className="flex gap-2 shrink-0">
-                <span onClick={(e) => { e.stopPropagation(); setVideo(ex) }} className="min-h-[44px] px-3 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/30 text-xs font-bold flex items-center gap-1"><Icon name="video" size={14} /> Vídeo</span>
-                <span className="text-xl opacity-50">{collapsed ? '›' : '⌄'}</span>
-              </span>
-            </button>
-            {!collapsed && (<>
-              <div className="mt-2 flex gap-2">
-                <button onClick={() => { setFocus(i); setModo('foco'); window.scrollTo({ top: 0 }) }} className="text-xs font-bold text-orange-500 min-h-[40px]">🎯 Focar neste ›</button>
-              </div>
-              {renderExerciseBody(ex)}
-            </>)}
-          </div>
-        )
-      })}
-
-      {modo === 'registros' && (
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl border p-4 stagger-1">
-          <h4 className="font-extrabold">📋 Séries de hoje ({doneSets.length}) • {formatKg(sessionVolume(dayLog.sets ?? []))}</h4>
-          {(dayLog.sets ?? []).length === 0 && <p className="text-xs opacity-60 mt-1">Nenhuma série concluída ainda hoje.</p>}
-          <div className="space-y-1.5 mt-2 max-h-96 overflow-auto">
-            {[...(dayLog.sets ?? [])].reverse().map((s, k) => (
-              <div key={k} className="p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl flex items-center justify-between border text-xs">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-emerald-500/15 text-emerald-500 font-black flex items-center justify-center text-[10px]">✓</span>
-                  <div>
-                    <p className="font-bold text-[11px] leading-tight">{s.exercise}</p>
-                    <span className="opacity-60">S{s.setNumber} • {s.load}kg × {s.repsDone}</span>
-                  </div>
-                </div>
-                <button onClick={() => removeSet(day, s.exercise, s.setNumber)} className="min-w-[44px] min-h-[44px] rounded-lg text-red-500 font-black text-lg" title="Desfazer">×</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {modo === 'registros' && <CardioCard dayKey={dayKey} blockIdx={block.idx} day={day} timer={t} />}
 
       {modo === 'foco' && (
-        <button onClick={() => { setFocus((focusIdx + 1) % plan.exercises.length); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-          className={`fixed lg:bottom-8 right-3 z-30 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-xs pl-5 pr-4 py-3.5 shadow-xl flex items-center gap-2 active:scale-95 ${t.running || t.remainingMs > 0 ? 'bottom-[180px]' : 'bottom-[92px]'}`}>
-          Próximo exercício <span className="bg-white/30 px-2 py-0.5 rounded-full">{focusIdx + 1}/{plan.exercises.length}</span> ›
+        <button
+          onClick={() => {
+            setFocus((focusIdx + 1) % plan.exercises.length)
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          className={`fixed right-3 z-30 flex items-center gap-2 rounded-full bg-primary py-3.5 pl-5 pr-4 font-mono text-xs tabular-nums text-primary-foreground transition active:scale-[0.98] lg:bottom-8 ${
+            t.running || t.remainingMs > 0 ? 'bottom-[180px]' : 'bottom-[92px]'
+          }`}
+        >
+          Próximo <span className="rounded-full bg-black/20 px-2 py-0.5">{focusIdx + 1}/{plan.exercises.length}</span> ›
         </button>
       )}
 
-      <CardioCard dayKey={dayKey} blockIdx={block.idx} day={day} timer={t} />
-
-      <button onClick={() => { setWorkoutDone(day, !done); showToast(done ? 'Treino reaberto' : 'Treino concluído! +50 XP 🏋️') }}
-        className={`w-full min-h-[52px] rounded-2xl font-black active:scale-95 ${done ? 'bg-emerald-600 text-white' : 'bg-orange-500 text-white'}`}>
-        {done ? 'Treino concluído ✓ — toque para reabrir' : 'Concluir treino (+50 XP na missão)'}
-      </button>
-
       {video && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4" onClick={() => setVideo(null)}>
-          <div className="w-full sm:max-w-md bg-white dark:bg-[#1E293B] rounded-t-3xl sm:rounded-3xl p-5 max-h-[90dvh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-black">{video.name}</h3>
-            <p className="text-xs opacity-60">{video.muscle} • {video.reps.raw} • desc. {video.rest}</p>
-            <p className="text-xs mt-2"><b>Atua:</b> {video.work}</p>
-            <ol className="mt-2 text-sm space-y-1.5 list-decimal list-inside">
-              {video.steps.map((c) => <li key={c}>{c}</li>)}
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" onClick={() => setVideo(null)}>
+          <div
+            className="max-h-[90dvh] w-full overflow-auto rounded-t-xl border border-white/[0.08] bg-[#1C211E]/95 p-5 backdrop-blur-md sm:max-w-md sm:rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold tracking-tight">{video.name}</h3>
+            <p className="font-mono text-[11px] tabular-nums text-zinc-500">
+              {video.muscle} · {video.reps.raw} · desc. {video.rest}
+            </p>
+            <p className="mt-2 text-xs text-zinc-400">
+              <span className="font-medium text-zinc-200">Atua:</span> {video.work}
+            </p>
+            <ol className="mt-2 list-decimal list-inside space-y-1.5 text-sm text-zinc-300">
+              {video.steps.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
             </ol>
-            {video.attention && <p className="mt-2 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 p-2">⚠️ {video.attention}</p>}
-            {video.alt && <p className="mt-2 text-xs rounded-lg bg-blue-500/10 border border-blue-500/30 p-2">🔄 <b>{video.alt[0]}:</b> {video.alt[1]}</p>}
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              <a href={video.videoPt} target="_blank" rel="noreferrer"
-                className="flex items-center justify-center gap-2 min-h-[52px] rounded-xl bg-red-600 text-white font-black text-sm">
+            {video.attention && (
+              <p className="mt-2 rounded-md border border-amber-400/20 bg-amber-400/[0.06] p-2 text-xs text-amber-200/90">{video.attention}</p>
+            )}
+            {video.alt && (
+              <p className="mt-2 rounded-md border border-blue-400/20 bg-blue-400/[0.06] p-2 text-xs text-blue-200/90">
+                <b>{video.alt[0]}:</b> {video.alt[1]}
+              </p>
+            )}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <a
+                href={video.videoPt}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-h-[48px] items-center justify-center gap-2 rounded-md bg-red-600 text-sm font-medium text-white transition hover:bg-red-600/90 active:scale-[0.98]"
+              >
                 <Icon name="play" size={14} /> Vídeo PT
               </a>
-              <a href={video.videoEn} target="_blank" rel="noreferrer"
-                className="flex items-center justify-center gap-2 min-h-[52px] rounded-xl bg-slate-900 text-white font-black text-sm border border-white/20">
+              <a
+                href={video.videoEn}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-h-[48px] items-center justify-center gap-2 rounded-md border border-white/[0.08] text-sm font-medium transition-colors hover:bg-white/[0.05] active:scale-[0.98]"
+              >
                 <Icon name="play" size={14} /> Vídeo EN
               </a>
             </div>
-            <p className="text-[11px] opacity-50 mt-2 text-center">Dica: assista com Wi-Fi antes de descer p/ academia (modo offline).</p>
-            <button onClick={() => setVideo(null)} className="mt-2 w-full min-h-[48px] rounded-xl border font-bold">Fechar</button>
+            <p className="mt-2 text-center text-[11px] text-zinc-600">Assista com Wi-Fi antes de descer p/ academia (modo offline).</p>
+            <button
+              onClick={() => setVideo(null)}
+              className="mt-2 min-h-[48px] w-full rounded-md border border-white/[0.08] text-sm font-medium transition-colors hover:bg-white/[0.05] active:scale-[0.98]"
+            >
+              Fechar
+            </button>
           </div>
         </div>
       )}
