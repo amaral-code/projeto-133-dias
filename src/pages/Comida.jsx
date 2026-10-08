@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { MEALS } from '../data/meals'
 import { EXTRA_FOODS } from '../data/foods'
 import { dayTotals, targetsFor } from '../lib/diet'
-import { fetchTacoTable, searchTaco, tacoToFood } from '../lib/taco'
-import { fetchOffProduct, offToFood } from '../lib/off'
+import { buscarPorNome, buscarPorCodigoDeBarras } from '../lib/foods/foodService.js'
+import { foodParaItemRefeicao } from '../lib/foods/schema.js'
 import { scaleFood, portionPresets } from '../lib/nutrition'
 import { useAppStore } from '../store/useAppStore'
 import { useProgressTracking } from '../hooks/useProgressTracking'
@@ -25,11 +25,10 @@ export default function Comida() {
   const [picked, setPicked] = useState(null) // alimento na calculadora
   const [grams, setGrams] = useState('')
   const [custom, setCustom] = useState({ name: '', kcal: '', prot: '', carb: '', fat: '' })
-  const [tacoRows, setTacoRows] = useState(null) // tabela TACO (cache offline)
-  const [tacoHits, setTacoHits] = useState([]) // resultados TACO p/ busca atual
+  const [tacoHits, setTacoHits] = useState([]) // DTOs (TACO + banco local)
   const [tacoStatus, setTacoStatus] = useState('idle') // idle|loading|ready|offline
   const [barcode, setBarcode] = useState('') // código de barras (Open Food Facts)
-  const [offItem, setOffItem] = useState(null) // produto OFF encontrado
+  const [offFood, setOffFood] = useState(null) // DTO do produto OFF encontrado
   const [offStatus, setOffStatus] = useState('idle') // idle|loading|error
 
   // Metas do cronograma oficial (mesma conta da tela Hoje — lib/diet)
@@ -45,32 +44,30 @@ export default function Comida() {
     <div className="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div className={`h-full ${cls}`} style={{ width: `${Math.min(100, (v / t) * 100)}%` }} /></div>
   )
 
-  const openSheet = (mealId) => { setOpen(mealId); setQ(''); setPicked(null); setGrams(''); setTacoHits([]); setBarcode(''); setOffItem(null); setOffStatus('idle') }
+  const openSheet = (mealId) => { setOpen(mealId); setQ(''); setPicked(null); setGrams(''); setTacoHits([]); setBarcode(''); setOffFood(null); setOffStatus('idle') }
   const searchBarcode = async () => {
     const code = barcode.replace(/\D/g, '')
     if (code.length < 8 || offStatus === 'loading') return
-    setOffStatus('loading'); setOffItem(null)
+    setOffStatus('loading'); setOffFood(null)
     try {
-      setOffItem(offToFood(await fetchOffProduct(code)))
+      const { alimento } = await buscarPorCodigoDeBarras(code)
+      setOffFood(alimento)
       setOffStatus('idle')
     } catch {
       setOffStatus('error')
     }
   }
-  // TACO: baixa 1x em 2º plano ao abrir (depois usa cache offline)
+  // Busca unificada (TACO + banco local) com debounce enquanto digita
   useEffect(() => {
-    if (!open || tacoRows || tacoStatus === 'loading') return
+    if (!open || q.trim().length < 2) { setTacoHits([]); return }
     setTacoStatus('loading')
-    fetchTacoTable()
-      .then(({ rows }) => { setTacoRows(rows); setTacoStatus('ready') })
-      .catch(() => setTacoStatus('offline'))
-  }, [open, tacoRows, tacoStatus])
-  // TACO: busca com debounce enquanto digita
-  useEffect(() => {
-    if (!open || q.trim().length < 2 || !tacoRows) { setTacoHits([]); return }
-    const id = setTimeout(() => setTacoHits(searchTaco(tacoRows, q).map(tacoToFood)), 350)
+    const id = setTimeout(() => {
+      buscarPorNome(q, { limite: 12 })
+        .then((alimentos) => { setTacoHits(alimentos); setTacoStatus('ready') })
+        .catch(() => { setTacoHits([]); setTacoStatus('offline') })
+    }, 350)
     return () => clearTimeout(id)
-  }, [open, q, tacoRows])
+  }, [open, q])
   const pick = (f) => { setPicked(f); setGrams(String(f.baseGrams || 100)) }
   const confirmCalc = () => {
     if (!picked || !(Number(grams) > 0)) return
@@ -176,11 +173,11 @@ export default function Comida() {
                     </button>
                   </div>
                   {offStatus === 'error' && <p className="text-[11px] text-red-500 font-bold mt-1">Não achei esse código — confira os números ou cadastre avulso abaixo.</p>}
-                  {offItem && (
-                    <button onClick={() => pick(offItem)}
+                  {offFood && (
+                    <button onClick={() => pick(foodParaItemRefeicao(offFood))}
                       className="mt-2 w-full min-h-[56px] px-3 py-2 rounded-xl bg-blue-500/10 text-left border border-blue-500/40 active:scale-[0.99] flex justify-between items-center gap-2">
-                      <span className="font-bold text-sm">{offItem.name}
-                        <span className="block text-[11px] font-normal opacity-60">100g = {offItem.kcal} kcal • P{offItem.prot} C{offItem.carb} G{offItem.fat}{offItem.nutri ? ` • Nutri-Score ${offItem.nutri}` : ''}</span>
+                      <span className="font-bold text-sm">{offFood.nome}{offFood.marca ? ` (${offFood.marca})` : ''}
+                        <span className="block text-[11px] font-normal opacity-60">100g = {offFood.calorias_100g} kcal • P{offFood.proteinas_100g} C{offFood.carboidratos_100g} G{offFood.gorduras_100g}{offFood.nutri_score ? ` • Nutri-Score ${offFood.nutri_score}` : ''}</span>
                       </span>
                       <span className="font-black text-blue-500">›</span>
                     </button>
@@ -200,19 +197,22 @@ export default function Comida() {
                 </div>
                 {tacoHits.length > 0 && (
                   <>
-                    <p className="text-[11px] font-black mt-3 mb-1 opacity-60">🌐 TACO · UNICAMP ({tacoHits.length})</p>
+                    <p className="text-[11px] font-black mt-3 mb-1 opacity-60">🌐 TACO + salvos ({tacoHits.length})</p>
                     <div className="space-y-1.5 max-h-56 overflow-auto">
-                      {tacoHits.map((f) => (
-                        <button key={f.name} onClick={() => pick(f)}
-                          className="w-full min-h-[56px] px-3 py-2 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 text-left border border-emerald-500/30 active:scale-[0.99] flex justify-between items-center gap-2">
-                          <span className="font-bold text-sm">{f.name}<span className="block text-[11px] font-normal opacity-60">100g = {f.kcal} kcal • P{f.prot} C{f.carb} G{f.fat}</span></span>
-                          <span className="font-black text-emerald-500">›</span>
-                        </button>
-                      ))}
+                      {tacoHits.map((f) => {
+                        const item = foodParaItemRefeicao(f)
+                        return (
+                          <button key={f.id} onClick={() => pick(item)}
+                            className="w-full min-h-[56px] px-3 py-2 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 text-left border border-emerald-500/30 active:scale-[0.99] flex justify-between items-center gap-2">
+                            <span className="font-bold text-sm">{f.nome}<span className="block text-[11px] font-normal opacity-60">100g = {f.calorias_100g} kcal • P{f.proteinas_100g} C{f.carboidratos_100g} G{f.gorduras_100g}{f.fonte === 'LOCAL' ? ' • salvo' : ''}</span></span>
+                            <span className="font-black text-emerald-500">›</span>
+                          </button>
+                        )
+                      })}
                     </div>
                   </>
                 )}
-                {q.trim().length >= 2 && tacoStatus === 'loading' && <p className="text-[11px] opacity-50 mt-1">🌐 Buscando na tabela TACO…</p>}
+                {q.trim().length >= 2 && tacoStatus === 'loading' && <p className="text-[11px] opacity-50 mt-1">🌐 Buscando alimentos…</p>}
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-xs font-black mb-2">+ Comida avulsa (vale da refeição)</p>
                   <input value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} placeholder="Nome do que você comeu" className="w-full min-h-[52px] px-3 rounded-xl bg-slate-100 dark:bg-slate-900 border text-sm mb-2" />

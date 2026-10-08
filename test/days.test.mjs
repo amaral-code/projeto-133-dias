@@ -324,6 +324,77 @@ test('Open Food Facts: parse, fallback kJ e cálculo por gramas', async () => {
   assert.ok(f.name.includes('(OFF)'))
 })
 
+test('arquitetura unificada: DTO, mappers, banco local e FoodService', async () => {
+  const schema = await import('../src/lib/foods/schema.js')
+  const mappers = await import('../src/lib/foods/mappers.js')
+  const foodDb = await import('../src/lib/foods/foodDb.js')
+  const svc = await import('../src/lib/foods/foodService.js')
+
+  // 1) DTO: ausentes/nulos viram 0, nunca NaN
+  const f = schema.createFood({ nome: 'Teste', fonte: 'TACO', calorias_100g: NaN, proteinas_100g: undefined, gorduras_100g: null })
+  assert.equal(f.calorias_100g, 0)
+  assert.equal(f.proteinas_100g, 0)
+  assert.equal(f.porcao_referencia_g, 100)
+  assert.throws(() => schema.createFood({ fonte: 'TACO' }), /FOOD_INVALIDO/)
+  assert.equal(schema.gerarIdAlimento('TACO', 'Arroz, integral!'), 'taco:arroz-integral')
+
+  // 2a) mapper TACO: linha crua → DTO
+  const ft = mappers.mapTacoRowParaFood({ descricao: 'Arroz, integral, cozido', kcal100: 123.5, prot100: 2.5, fat100: 1, carb100: 25.8, fibra100: 2.7, categoria: 'Cereais' })
+  assert.equal(ft.fonte, 'TACO')
+  assert.equal(ft.marca, null)
+  assert.equal(ft.codigo_barras, null)
+  assert.equal(ft.fibras_100g, 2.7)
+  assert.equal(mappers.mapTacoRowParaFood({}), null)
+
+  // 2b) mapper OFF: envelope e product direto, kJ fallback, nulos → 0
+  const nutella = { status: 1, code: '3017620422003', product: { product_name: 'Nutella', brands: 'Nutella, Ferrero', nutriments: { 'energy-kcal_100g': 539, proteins_100g: 6.3, carbohydrates_100g: 57.5, fat_100g: 30.9 }, nutriscore_grade: 'e', nova_group: 4 } }
+  const fo = mappers.mapOffJsonParaFood(nutella)
+  assert.equal(fo.fonte, 'OPEN_FOOD_FACTS')
+  assert.equal(fo.marca, 'Nutella')
+  assert.equal(fo.codigo_barras, '3017620422003')
+  assert.equal(fo.calorias_100g, 539)
+  assert.equal(mappers.mapOffJsonParaFood({ status: 1, product: { product_name: 'X', nutriments: { energy_100g: 418 } } }).calorias_100g, 100) // 418kJ ≈ 100kcal
+  assert.equal(mappers.mapOffJsonParaFood({ status: 0 }), null)
+  assert.equal(mappers.mapOffJsonParaFood({ status: 1, product: { product_name: 'Y', nutriments: {} } }), null)
+  // adaptador p/ item de refeição (formato da Comida)
+  const item = schema.foodParaItemRefeicao(ft)
+  assert.equal(item.baseGrams, 100)
+  assert.ok(item.name.endsWith('(TACO)'))
+
+  // 3) banco local: salva, busca por código (unique) e por nome sem acento
+  await foodDb.limparAlimentos()
+  await foodDb.salvarAlimento(ft)
+  await foodDb.salvarAlimento(fo)
+  assert.equal((await foodDb.buscarAlimentoPorCodigo('3017620422003')).nome, 'Nutella')
+  assert.equal(await foodDb.buscarAlimentoPorCodigo('000'), null)
+  assert.equal((await foodDb.buscarAlimentosPorNome('acai')).length, 0)
+  const whey = schema.createFood({ nome: 'Whey Grego Açaí', fonte: 'LOCAL', calorias_100g: 100, codigo_barras: '111' })
+  await foodDb.salvarAlimento(whey)
+  assert.equal((await foodDb.buscarAlimentosPorNome('acai'))[0].nome, 'Whey Grego Açaí')
+  await assert.rejects(foodDb.salvarAlimento(schema.createFood({ id: 'local:outro', nome: 'Outro', fonte: 'LOCAL', codigo_barras: '111' })), /DUPLICADO/)
+
+  // 4a) serviço por código: banco primeiro (sem rede), erros claros
+  const hit = await svc.buscarPorCodigoDeBarras('3017620422003', { usarRede: false })
+  assert.equal(hit.origem, 'banco')
+  assert.equal(hit.alimento.calorias_100g, 539)
+  await assert.rejects(svc.buscarPorCodigoDeBarras('123', { usarRede: false }), /BARCODE_INVALIDO/)
+  await assert.rejects(svc.buscarPorCodigoDeBarras('9999999999999', { usarRede: false }), /NAO_ENCONTRADO/)
+
+  // 4b) serviço por nome com tabela injetada (sem rede): TACO + banco
+  const tabela = [{ descricao: 'Arroz, integral, cozido', kcal100: 123.5, prot100: 2.5, fat100: 1, carb100: 25.8, categoria: 'Cereais' }]
+  const achados = await svc.buscarPorNome('arroz', { tabelaTaco: tabela })
+  assert.ok(achados.some((a) => a.fonte === 'TACO' && a.nome.includes('Arroz')))
+  assert.deepEqual(await svc.buscarPorNome('x'), [])
+
+  // 4c) cálculo por porção: regra de três com 2 casas
+  const n = svc.calcularNutrientesPorPorcao(ft, 150)
+  assert.equal(n.calorias, 185.25)
+  assert.equal(n.proteinas, 3.75)
+  assert.equal(n.gramas, 150)
+  assert.equal(svc.calcularNutrientesPorPorcao(ft, 0).calorias, 0)
+  await foodDb.limparAlimentos()
+})
+
 test('fim de semana = descanso: não quebra streak nem marca pendente', async () => {
   const { isWeekendDay, dateForDay } = await import('../src/hooks/useProgressTracking.js')
   // 2026-10-05 é segunda; dia 1 = seg, dia 6 = sáb, dia 7 = dom

@@ -1,45 +1,31 @@
 // Open Food Facts — busca por código de barras (EAN-8/13, UPC).
 // Endpoint: GET world.openfoodfacts.org/api/v2/product/{codigo}.json
-// Retorna valores por 100 g (nutriments.*_100g) + Nutri-Score/NOVA de brinde.
-//
-// Uso:
-//   const item = await fetchOffProduct('7891234567890') // lança se não achar
-//   const refeicao = calcOffNutrition(item, 40)          // 40 g → kcal/P/C/G
+// Transporte + parse. O mapeamento p/ DTO unificado vive em foods/mappers.js.
+// O serviço unificado (busca + cache + cálculo) vive em foods/foodService.js.
+import { mapOffJsonParaFood } from './foods/mappers.js'
+import { createFood, gerarIdAlimento, FONTES, foodParaItemRefeicao } from './foods/schema.js'
 
 const FIELDS = 'code,product_name,brands,quantity,nutriments,nutriscore_grade,nova_group'
 
 export const offURL = (barcode) =>
   `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(String(barcode).trim())}.json?fields=${FIELDS}`
 
-const num = (v) => {
-  const n = Number(v)
-  return Number.isFinite(n) && n > 0 ? n : 0
-}
-
 // Normaliza o JSON da API p/ o formato interno (por 100 g).
-// Retorna null se o produto não existe ou não tem dados de energia.
+// Delega ao DTO unificado — mesma saída de antes.
 export function parseOffProduct(json) {
-  if (!json || json.status !== 1 || !json.product) return null
-  const p = json.product
-  const nt = p.nutriments ?? {}
-  let kcal = num(nt['energy-kcal_100g'] ?? nt['energy-kcal_value'])
-  if (!kcal) {
-    const kj = num(nt.energy_100g ?? nt.energy_value)
-    if (kj) kcal = Math.round(kj / 4.184) // fallback: kJ → kcal
-  }
-  if (!kcal) return null
-  const name = String(p.product_name ?? '').trim() || 'Produto sem nome'
-  const brands = String(p.brands ?? '').trim()
+  const food = mapOffJsonParaFood(json)
+  if (!food) return null
+  const p = json?.product ?? json
   return {
-    barcode: String(json.code ?? p.code ?? ''),
-    name: brands ? `${name} (${brands.split(',')[0].trim()})` : name,
+    barcode: food.codigo_barras ?? '',
+    name: food.marca ? `${food.nome} (${food.marca})` : food.nome,
     quantity: String(p.quantity ?? '').trim(),
-    kcal100: kcal,
-    prot100: num(nt.proteins_100g ?? nt.proteins_value),
-    carb100: num(nt.carbohydrates_100g ?? nt.carbohydrates_value),
-    fat100: num(nt.fat_100g ?? nt.fat_value),
-    nutri: String(p.nutriscore_grade ?? '').toUpperCase() || null, // A–E
-    nova: p.nova_group ?? null, // 1–4
+    kcal100: food.calorias_100g,
+    prot100: food.proteinas_100g,
+    carb100: food.carboidratos_100g,
+    fat100: food.gorduras_100g,
+    nutri: food.nutri_score,
+    nova: food.nova_group,
   }
 }
 
@@ -55,20 +41,21 @@ export async function fetchOffProduct(barcode) {
   return item
 }
 
-// Converte p/ o formato de alimento do app (base 100 g — funciona com
-// scaleFood() e com o lançamento em gramas da Comida).
+// Converte p/ o formato de alimento do app (base 100 g).
+// Delega ao DTO unificado — mesma saída de antes.
 export function offToFood(item) {
-  return {
-    name: `${item.name} (OFF)`,
-    kcal: item.kcal100,
-    prot: item.prot100,
-    carb: item.carb100,
-    fat: item.fat100,
-    unit: '100g (Open Food Facts)',
-    baseGrams: 100,
-    nutri: item.nutri,
-    nova: item.nova,
-  }
+  const food = createFood({
+    id: gerarIdAlimento(FONTES.OFF, item.barcode || item.name),
+    nome: String(item.name).replace(/\s*\(OFF\)$/, ''),
+    marca: null,
+    codigo_barras: item.barcode || null,
+    fonte: FONTES.OFF,
+    calorias_100g: item.kcal100,
+    proteinas_100g: item.prot100,
+    carboidratos_100g: item.carb100,
+    gorduras_100g: item.fat100,
+  })
+  return { ...foodParaItemRefeicao(food), nutri: item.nutri ?? null, nova: item.nova ?? null }
 }
 
 // Cálculo direto: item + gramas → kcal e macros.

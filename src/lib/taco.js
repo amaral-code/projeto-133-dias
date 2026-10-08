@@ -1,11 +1,10 @@
 // TACO — Tabela Brasileira de Composição de Alimentos (UNICAMP/NEPA).
 // Fonte: repositório brolesi/taco (CSV processado, valores por 100 g).
-// O app baixa 1x, guarda no banco local (offline-first) e calcula tudo por gramas.
-//
-// Uso:
-//   const tabela = await fetchTacoTable()            // baixa 1x (cache depois)
-//   const achados = searchTaco(tabela, 'arroz integral')
-//   const refeicao = calcTacoNutrition(achados[0], 150) // 150 g → kcal/P/C/G
+// Transporte + parse cru. O mapeamento p/ DTO unificado vive em foods/mappers.js.
+// O serviço unificado (busca + cache + cálculo) vive em foods/foodService.js.
+import { fetchComTimeout } from './foods/http.js'
+import { mapTacoRowParaFood } from './foods/mappers.js'
+import { foodParaItemRefeicao } from './foods/schema.js'
 
 export const TACO_CSV_URL =
   'https://raw.githubusercontent.com/brolesi/taco/main/data/processed/taco/taco_composicao.csv'
@@ -58,7 +57,7 @@ export function parseTacoCSV(text) {
   const idx = (name) => header.indexOf(name)
   const iDesc = idx('descricao'), iKcal = idx('energia_kcal')
   const iProt = idx('proteina_g'), iFat = idx('lipideos_g')
-  const iCarb = idx('carboidrato_g'), iCat = idx('categoria')
+  const iCarb = idx('carboidrato_g'), iFibra = idx('fibra_g'), iCat = idx('categoria')
   if (iDesc < 0 || iKcal < 0) throw new Error('CSV TACO em formato inesperado')
   const num = (v) => {
     const n = Number(String(v ?? '').replace(',', '.'))
@@ -70,6 +69,7 @@ export function parseTacoCSV(text) {
     prot100: num(r[iProt]),
     fat100: num(r[iFat]),
     carb100: num(r[iCarb]),
+    fibra100: iFibra >= 0 ? num(r[iFibra]) : 0,
     categoria: (r[iCat] || '').trim(),
   })).filter((x) => x.descricao && x.kcal100 > 0)
 }
@@ -84,7 +84,7 @@ export async function fetchTacoTable({ force = false } = {}) {
     const cached = readCache()
     if (cached) { memCache = cached; return { rows: cached, fromCache: true } }
   }
-  const res = await fetch(TACO_CSV_URL)
+  const res = await fetchComTimeout(TACO_CSV_URL, { timeoutMs: 20000 })
   if (!res.ok) throw new Error(`TACO HTTP ${res.status}`)
   const rows = parseTacoCSV(await res.text())
   memCache = rows
@@ -121,19 +121,12 @@ export function searchTaco(rows, query, limit = 12) {
   return scored.sort((a, b) => a.score - b.score).slice(0, limit).map((s) => s.r)
 }
 
-// Converte linha TACO p/ o formato de alimento do app (base 100 g —
-// funciona direto com scaleFood() e com o lançamento em gramas da Comida).
+// Converte linha TACO p/ o formato de alimento do app (base 100 g).
+// Delega ao DTO unificado (foods/) — mesma saída de antes.
 export function tacoToFood(row) {
-  return {
-    name: `${row.descricao} (TACO)`,
-    kcal: row.kcal100,
-    prot: row.prot100,
-    carb: row.carb100,
-    fat: row.fat100,
-    unit: '100g (TACO)',
-    baseGrams: 100,
-    categoria: row.categoria,
-  }
+  const food = mapTacoRowParaFood(row)
+  if (!food) throw new Error('TACO_INVALIDO')
+  return { ...foodParaItemRefeicao(food), categoria: row.categoria || '' }
 }
 
 // Cálculo direto: dado o item e as gramas, retorna kcal + macros.
