@@ -28,6 +28,8 @@ function persist(get) {
   savePersistedDebounced({ user, startDate, days, mealLog, loads, trainKey, isDark })
 }
 
+let toastTimer = null
+
 export const useAppStore = create((set, get) => ({
   ...initialState,
 
@@ -60,6 +62,14 @@ export const useAppStore = create((set, get) => ({
   setStartDate: (startDate) => { set({ startDate }); persist(get) },
   setViewDay: (viewDay) => set({ viewDay }),
   setTrainKey: (trainKey) => { set({ trainKey }); persist(get) },
+
+  toast: null, // { text } — feedback global estilo app (não persiste)
+  showToast: (text, ms = 2400) => {
+    clearTimeout(toastTimer)
+    set({ toast: { text, key: Date.now() } })
+    toastTimer = setTimeout(() => set({ toast: null }), ms)
+  },
+  clearToast: () => { clearTimeout(toastTimer); set({ toast: null }) },
 
   toggleMission: (day, missionId) => {
     set((s) => {

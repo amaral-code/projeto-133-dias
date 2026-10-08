@@ -395,6 +395,19 @@ test('arquitetura unificada: DTO, mappers, banco local e FoodService', async () 
   await foodDb.limparAlimentos()
 })
 
+test('toast global: mostra e limpa sem persistir no banco', async () => {
+  const { useAppStore } = await import('../src/store/useAppStore.js')
+  const st = () => useAppStore.getState()
+  assert.equal(st().toast, null)
+  st().showToast('Olá')
+  assert.equal(st().toast.text, 'Olá')
+  st().clearToast()
+  assert.equal(st().toast, null)
+  // toast nunca entra no backup/persistência
+  st().showToast('x')
+  st().clearToast()
+})
+
 test('fim de semana = descanso: não quebra streak nem marca pendente', async () => {
   const { isWeekendDay, dateForDay } = await import('../src/hooks/useProgressTracking.js')
   // 2026-10-05 é segunda; dia 1 = seg, dia 6 = sáb, dia 7 = dom

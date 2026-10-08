@@ -22,6 +22,7 @@ function beep(freq = 880, durMs = 250) {
 
 export function useWorkoutTimer() {
   const [remainingMs, setRemainingMs] = useState(0)
+  const [totalMs, setTotalMs] = useState(0)
   const [running, setRunning] = useState(false)
   const [label, setLabel] = useState('Descanso')
   const endAtRef = useRef(0)
@@ -49,6 +50,7 @@ export function useWorkoutTimer() {
     endAtRef.current = Date.now() + remainRef.current
     setLabel(customLabel)
     setRemainingMs(remainRef.current)
+    setTotalMs(remainRef.current)
     setRunning(true)
   }, [])
 
@@ -64,10 +66,12 @@ export function useWorkoutTimer() {
   const add15s = useCallback(() => {
     endAtRef.current += 15000
     setRemainingMs((v) => v + 15000)
+    setTotalMs((v) => v + 15000)
   }, [])
-  const cancel = useCallback(() => { setRunning(false); setRemainingMs(0) }, [])
+  const cancel = useCallback(() => { setRunning(false); setRemainingMs(0); setTotalMs(0) }, [])
 
   const mm = Math.floor(remainingMs / 60000)
   const ss = Math.floor((remainingMs % 60000) / 1000)
-  return { running, label, remainingMs, mm, ss, start, pause, resume, add15s, cancel, startRest: (s = 60) => start(s, 'Descanso'), startHIIT: (s = 30) => start(s, 'HIIT') }
+  const progress = totalMs > 0 ? Math.max(0, Math.min(1, remainingMs / totalMs)) : 0
+  return { running, label, remainingMs, totalMs, progress, mm, ss, start, pause, resume, add15s, cancel, startRest: (s = 60) => start(s, 'Descanso'), startHIIT: (s = 30) => start(s, 'HIIT') }
 }

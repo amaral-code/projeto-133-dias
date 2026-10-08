@@ -18,6 +18,7 @@ export default function Comida() {
   const toggleMealEaten = useAppStore((s) => s.toggleMealEaten)
   const addFoodToMeal = useAppStore((s) => s.addFoodToMeal)
   const removeExtraItem = useAppStore((s) => s.removeExtraItem)
+  const showToast = useAppStore((s) => s.showToast)
 
   const [collapsed, setCollapsed] = useState({})
   const [open, setOpen] = useState(null) // mealId do bottom-sheet
@@ -72,6 +73,7 @@ export default function Comida() {
   const confirmCalc = () => {
     if (!picked || !(Number(grams) > 0)) return
     addFoodToMeal(day, open, calc)
+    showToast(`${calc.qty}g lançados: ${calc.kcal} kcal 🍽️`)
     setOpen(null); setPicked(null)
   }
   const addCustom = () => {
