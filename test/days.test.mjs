@@ -263,6 +263,25 @@ test('store: perfil Miguel + missões + água + séries + cardio consistentes', 
   await new Promise((r) => setTimeout(r, 1300))
 })
 
+test('fim de semana = descanso: não quebra streak nem marca pendente', async () => {
+  const { isWeekendDay, dateForDay } = await import('../src/hooks/useProgressTracking.js')
+  // 2026-10-05 é segunda; dia 1 = seg, dia 6 = sáb, dia 7 = dom
+  assert.equal(dateForDay('2026-10-05', 1).getDay(), 1)
+  assert.equal(isWeekendDay('2026-10-05', 1), false)
+  assert.equal(isWeekendDay('2026-10-05', 6), true)
+  assert.equal(isWeekendDay('2026-10-05', 7), true)
+  assert.equal(isWeekendDay('2026-10-05', 8), false)
+})
+
+test('volume da sessão: soma carga×reps', async () => {
+  const { sessionVolume, formatKg } = await import('../src/lib/metrics.js')
+  assert.equal(sessionVolume([]), 0)
+  assert.equal(sessionVolume([{ load: 60, repsDone: 10 }, { load: 80, repsDone: 8 }]), 1240)
+  assert.equal(sessionVolume([{ load: 0, repsDone: 10 }]), 0)
+  assert.equal(formatKg(1240), '1,2 t')
+  assert.equal(formatKg(800), '800 kg')
+})
+
 test('consultoria: Navy, FFMI, WHtR, Karvonen, 1RM, ISSN (valores de referência)', async () => {
   const m = await import('../src/lib/metrics.js')
   // Navy homem: cintura 85, pescoço 38, altura 167 → 24,9%

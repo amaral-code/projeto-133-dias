@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { useAppStore } from '../store/useAppStore'
-import { MISSIONS_TEMPLATE } from '../data/program'
+import { useAppStore } from '../store/useAppStore.js'
+import { MISSIONS_TEMPLATE } from '../data/program.js'
 
 const TOTAL_DAYS = 133
 const XP_PER_MISSION = { 1: 20, 2: 10, 3: 50, 4: 20, 5: 10 }
@@ -21,6 +21,19 @@ function dayComplete(days, day) {
   if (!d) return false
   const missionsDone = MISSIONS_TEMPLATE.filter((m) => d.missions?.[m.id]).length
   return missionsDone === MISSIONS_TEMPLATE.length || (d.workoutDone && missionsDone >= 4)
+}
+
+// Programa é SEG–SEX: sábado/domingo são descanso e não quebram streak nem
+// contam como "pendente" no mapa. Dia 1 = startDate (calendário real).
+export function dateForDay(startDateISO, day) {
+  const d = new Date(startDateISO + 'T12:00:00')
+  d.setDate(d.getDate() + (day - 1))
+  return d
+}
+
+export function isWeekendDay(startDateISO, day) {
+  const wd = dateForDay(startDateISO, day).getDay()
+  return wd === 0 || wd === 6
 }
 
 export function isDayComplete(days, day) {
@@ -61,9 +74,11 @@ export function useProgressTracking() {
     const prevCut = LEVEL_STEPS[level - 1]
     const levelProgress = nextCut === prevCut ? 1 : Math.min(1, (xp - prevCut) / (nextCut - prevCut))
 
-    // Streak: dias seguidos (terminando hoje ou ontem) com dia completo
+    // Streak: dias ÚTEIS seguidos (terminando hoje ou ontem) com dia completo.
+    // Fim de semana = descanso: pula sem contar e sem quebrar.
     let streak = 0
     for (let d = currentDay; d >= 1; d--) {
+      if (isWeekendDay(startDate, d)) continue
       if (dayComplete(days, d)) streak += 1
       else if (d === currentDay) continue // hoje ainda pode completar
       else break

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { useProgressTracking, isDayComplete } from '../hooks/useProgressTracking'
+import { useProgressTracking, isDayComplete, isWeekendDay } from '../hooks/useProgressTracking'
 import { useAppStore } from '../store/useAppStore'
 import { MEASURE_FIELDS, normalizeBody } from '../data/body'
-import { navyBF, avg1RM } from '../lib/metrics'
+import { navyBF, avg1RM, sessionVolume } from '../lib/metrics'
 
 function delta(first, last, invert = false, unit = '') {
   if (first == null || last == null) return null
@@ -77,15 +77,27 @@ export default function Progresso() {
     return weeks.length ? weeks : [{ semana: 'S1', deficit: 0 }]
   }, [p])
 
+  const startDate = useAppStore((s) => s.startDate)
   const heat = useMemo(() => Array.from({ length: 133 }, (_, i) => {
     const d = i + 1
     if (d > p.currentDay) return { d, cls: 'future' }
+    if (isWeekendDay(startDate, d)) return { d, cls: 'rest' }
     return { d, cls: isDayComplete(p.days, d) ? 'done' : (d === p.currentDay ? 'today' : 'missed') }
-  }), [p])
+  }), [p, startDate])
 
   const clsMap = {
-    done: 'bg-emerald-500', missed: 'bg-red-400/70', today: 'bg-orange-500 ring-2 ring-orange-300', future: 'bg-slate-200 dark:bg-slate-800'
+    done: 'bg-emerald-500', missed: 'bg-red-400/70', today: 'bg-orange-500 ring-2 ring-orange-300', future: 'bg-slate-200 dark:bg-slate-800', rest: 'bg-sky-300 dark:bg-sky-900'
   }
+
+  // Volume (kg) por dia de treino
+  const volumeSeries = useMemo(() => {
+    const pts = []
+    for (let d = 1; d <= p.currentDay; d++) {
+      const v = sessionVolume(p.days[d]?.sets ?? [])
+      if (v > 0) pts.push({ dia: d, volume: v })
+    }
+    return pts
+  }, [p])
 
   const weightChart = series.filter((r) => r.weight != null).map((r) => ({ dia: r.dia, peso: r.weight }))
   const waistChart = series.filter((r) => r.waist != null).map((r) => ({ dia: r.dia, cintura: r.waist, quadril: r.hip ?? null }))
@@ -190,6 +202,7 @@ export default function Progresso() {
           <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" />feito</span>
           <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-red-400/70 inline-block" />pendente</span>
           <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-orange-500 inline-block" />hoje</span>
+          <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-sky-300 inline-block" />descanso (sáb/dom)</span>
         </div>
         <div className="grid grid-cols-[repeat(19,minmax(0,1fr))] gap-1">
           {heat.map((c) => (
@@ -310,6 +323,23 @@ export default function Progresso() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">
+        <h3 className="font-extrabold">🏋️ Volume por treino (kg totais)</h3>
+        {volumeSeries.length === 0
+          ? <p className="text-xs opacity-60 mt-1">Registre séries com carga no Treino para ver o volume.</p>
+          : <div className="h-48 mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={volumeSeries}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="dia" fontSize={11} />
+                <YAxis fontSize={11} />
+                <Tooltip />
+                <Bar dataKey="volume" fill="#F97316" radius={[8, 8, 0, 0]} name="Volume (kg)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>}
       </div>
 
       <div className="rounded-2xl border bg-white dark:bg-[#1E293B] p-5">

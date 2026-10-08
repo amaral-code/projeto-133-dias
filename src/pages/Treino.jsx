@@ -6,6 +6,7 @@ import { useAppStore } from '../store/useAppStore'
 import { useProgressTracking } from '../hooks/useProgressTracking'
 import { useWorkoutTimer } from '../hooks/useWorkoutTimer'
 import { suggestNextLoad } from '../lib/doubleProgression'
+import { sessionVolume, formatKg } from '../lib/metrics'
 
 const mmss = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 
@@ -126,6 +127,9 @@ export default function Treino({ timer }) {
           <div className="h-full bg-gradient-to-r from-orange-500 to-emerald-500 transition-all" style={{ width: `${pctDone}%` }} />
         </div>
         <p className="text-xs opacity-60 mt-1">Dia {day} • {block.name}: {block.sub} • RIR {block.rir} • {focusForWeek(week)}</p>
+        {(dayLog.sets ?? []).length > 0 && (
+          <p className="text-xs font-black mt-1 text-orange-500">🏋️ Volume da sessão: {formatKg(sessionVolume(dayLog.sets))}</p>
+        )}
       </div>
 
       {plan.exercises.map((ex, i) => {

@@ -147,6 +147,15 @@ export function proteinTargets(weightKg) {
   }
 }
 
+// ---- 8) Volume da sessão (kg totais = Σ carga × reps) ----
+export function sessionVolume(sets = []) {
+  return Math.round(sets.reduce((a, s) => a + (Number(s.load) || 0) * (Number(s.repsDone) || 0), 0))
+}
+
+export function formatKg(v) {
+  if (v >= 1000) return `${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} t`
+  return `${Math.round(v).toLocaleString('pt-BR')} kg`
+}
 // ---- 7) Ritmo de cut + projeções a partir da composição real ----
 export function cutPace(weightKg) {
   const w = Number(weightKg) || 70
