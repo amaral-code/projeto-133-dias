@@ -3,6 +3,7 @@ import { MEALS } from '../data/meals'
 import { EXTRA_FOODS } from '../data/foods'
 import { dayTotals, targetsFor } from '../lib/diet'
 import { fetchTacoTable, searchTaco, tacoToFood } from '../lib/taco'
+import { fetchOffProduct, offToFood } from '../lib/off'
 import { scaleFood, portionPresets } from '../lib/nutrition'
 import { useAppStore } from '../store/useAppStore'
 import { useProgressTracking } from '../hooks/useProgressTracking'
@@ -27,6 +28,9 @@ export default function Comida() {
   const [tacoRows, setTacoRows] = useState(null) // tabela TACO (cache offline)
   const [tacoHits, setTacoHits] = useState([]) // resultados TACO p/ busca atual
   const [tacoStatus, setTacoStatus] = useState('idle') // idle|loading|ready|offline
+  const [barcode, setBarcode] = useState('') // código de barras (Open Food Facts)
+  const [offItem, setOffItem] = useState(null) // produto OFF encontrado
+  const [offStatus, setOffStatus] = useState('idle') // idle|loading|error
 
   // Metas do cronograma oficial (mesma conta da tela Hoje — lib/diet)
   const user = useAppStore((s) => s.user)
@@ -41,7 +45,18 @@ export default function Comida() {
     <div className="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div className={`h-full ${cls}`} style={{ width: `${Math.min(100, (v / t) * 100)}%` }} /></div>
   )
 
-  const openSheet = (mealId) => { setOpen(mealId); setQ(''); setPicked(null); setGrams(''); setTacoHits([]) }
+  const openSheet = (mealId) => { setOpen(mealId); setQ(''); setPicked(null); setGrams(''); setTacoHits([]); setBarcode(''); setOffItem(null); setOffStatus('idle') }
+  const searchBarcode = async () => {
+    const code = barcode.replace(/\D/g, '')
+    if (code.length < 8 || offStatus === 'loading') return
+    setOffStatus('loading'); setOffItem(null)
+    try {
+      setOffItem(offToFood(await fetchOffProduct(code)))
+      setOffStatus('idle')
+    } catch {
+      setOffStatus('error')
+    }
+  }
   // TACO: baixa 1x em 2º plano ao abrir (depois usa cache offline)
   useEffect(() => {
     if (!open || tacoRows || tacoStatus === 'loading') return
@@ -149,6 +164,28 @@ export default function Comida() {
 
             {!picked ? (
               <>
+                {/* CÓDIGO DE BARRAS — Open Food Facts */}
+                <div className="mt-2 rounded-xl border border-blue-500/30 bg-blue-500/5 p-2.5">
+                  <p className="text-[11px] font-black opacity-70">📷 Código de barras (Open Food Facts)</p>
+                  <div className="flex gap-2 mt-1.5">
+                    <input value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" placeholder="Ex: 7894900010015"
+                      className="flex-1 min-h-[52px] px-4 rounded-xl bg-slate-100 dark:bg-slate-900 border font-mono text-center" />
+                    <button onClick={searchBarcode} disabled={barcode.replace(/\D/g, '').length < 8 || offStatus === 'loading'}
+                      className="min-h-[52px] px-5 rounded-xl bg-blue-500 text-white font-black disabled:opacity-40 active:scale-95">
+                      {offStatus === 'loading' ? '…' : 'Buscar'}
+                    </button>
+                  </div>
+                  {offStatus === 'error' && <p className="text-[11px] text-red-500 font-bold mt-1">Não achei esse código — confira os números ou cadastre avulso abaixo.</p>}
+                  {offItem && (
+                    <button onClick={() => pick(offItem)}
+                      className="mt-2 w-full min-h-[56px] px-3 py-2 rounded-xl bg-blue-500/10 text-left border border-blue-500/40 active:scale-[0.99] flex justify-between items-center gap-2">
+                      <span className="font-bold text-sm">{offItem.name}
+                        <span className="block text-[11px] font-normal opacity-60">100g = {offItem.kcal} kcal • P{offItem.prot} C{offItem.carb} G{offItem.fat}{offItem.nutri ? ` • Nutri-Score ${offItem.nutri}` : ''}</span>
+                      </span>
+                      <span className="font-black text-blue-500">›</span>
+                    </button>
+                  )}
+                </div>
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="O que você comeu? (ex: frango, arroz…)"
                   className="mt-2 w-full min-h-[52px] px-4 rounded-xl bg-slate-100 dark:bg-slate-900 border text-sm" />
                 <div className="mt-3 space-y-1.5 max-h-64 overflow-auto">

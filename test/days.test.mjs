@@ -292,6 +292,38 @@ test('TACO: parser CSV, busca sem acento e cálculo por gramas', async () => {
   assert.ok(f.name.includes('(TACO)'))
 })
 
+test('Open Food Facts: parse, fallback kJ e cálculo por gramas', async () => {
+  const { parseOffProduct, offToFood, calcOffNutrition, offURL } = await import('../src/lib/off.js')
+  assert.ok(offURL('3017620422003').includes('3017620422003'))
+  const nutella = {
+    status: 1, code: '3017620422003',
+    product: {
+      product_name: 'Nutella', brands: 'Nutella, Ferrero', quantity: '400 g e',
+      nutriscore_grade: 'e', nova_group: 4,
+      nutriments: { 'energy-kcal_100g': 539, proteins_100g: 6.3, carbohydrates_100g: 57.5, fat_100g: 30.9 },
+    },
+  }
+  const item = parseOffProduct(nutella)
+  assert.equal(item.kcal100, 539)
+  assert.equal(item.nutri, 'E')
+  assert.equal(item.nova, 4)
+  assert.ok(item.name.includes('Nutella'))
+  // sem kcal em kcal, converte de kJ (2252 kJ → 538 kcal)
+  const kjOnly = { status: 1, product: { product_name: 'X', nutriments: { energy_100g: 2252, proteins_100g: 5, carbohydrates_100g: 10, fat_100g: 2 } } }
+  assert.equal(parseOffProduct(kjOnly).kcal100, 538)
+  // não encontrado / sem energia → null
+  assert.equal(parseOffProduct({ status: 0 }), null)
+  assert.equal(parseOffProduct({ status: 1, product: { product_name: 'Y', nutriments: {} } }), null)
+  // cálculo: 40 g de Nutella → 216 kcal
+  const n = calcOffNutrition(item, 40)
+  assert.equal(n.kcal, 216)
+  assert.equal(n.prot, 2.5)
+  assert.equal(calcOffNutrition(item, 0).kcal, 0)
+  const f = offToFood(item)
+  assert.equal(f.baseGrams, 100)
+  assert.ok(f.name.includes('(OFF)'))
+})
+
 test('fim de semana = descanso: não quebra streak nem marca pendente', async () => {
   const { isWeekendDay, dateForDay } = await import('../src/hooks/useProgressTracking.js')
   // 2026-10-05 é segunda; dia 1 = seg, dia 6 = sáb, dia 7 = dom
