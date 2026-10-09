@@ -535,6 +535,82 @@ test('volume da sessão: soma carga×reps', async () => {
   assert.equal(formatKg(800), '800 kg')
 })
 
+test('OCR rótulo BR: porção + macros + kJ fallback + confiança', async () => {
+  const { parseLabelText, labelConfidence, kjToKcal } = await import('../src/lib/labelOcr.js')
+  const p = parseLabelText('Porção de 30g | Valor energético 150 kcal | Proteínas 10g | Carboidratos 12g | Gorduras totais 5g | Fibra alimentar 2,5g')
+  assert.equal(p.porcaoG, 30)
+  assert.equal(p.kcal, 150)
+  assert.equal(p.prot, 10)
+  assert.equal(p.carb, 12)
+  assert.equal(p.fat, 5)
+  assert.equal(p.fibra, 2.5)
+  assert.equal(labelConfidence(p), 6)
+  assert.equal(kjToKcal(418), 100)
+  assert.equal(kjToKcal('abc'), null)
+  const kj = parseLabelText('Energia 627 kJ por porção de 40g')
+  assert.equal(kj.kcal, 150)
+  assert.equal(parseLabelText('nada aqui').kcal, null)
+  assert.equal(labelConfidence({}), 0)
+})
+
+test('progressionPlan: caminho real da UI + dados legados sem day', async () => {
+  const dp = await import('../src/lib/doubleProgression.js')
+  // legado sem day não quebra
+  assert.equal(dp.lastSessionFor([{ exercise: 'A', load: 50 }], 'A'), null)
+  assert.equal(dp.lastSessionFor(null, 'A'), null)
+  const plan = dp.progressionPlan(
+    [{ exercise: 'Supino', day: 5, load: 60, repsDone: 8, repsTop: 8 }],
+    { exerciseName: 'Supino', exerciseType: 'composto', baseLoad: 0 }
+  )
+  assert.equal(plan.hasHistory, true)
+  assert.equal(plan.suggested, 61)
+  assert.equal(plan.nextIfTop, 62)
+  assert.equal(dp.progressionPlan([], { exerciseName: 'X', baseLoad: 0 }).hasHistory, false)
+})
+
+test('store blindado: dias nulos + viewDay clamp + setLoad NaN', async () => {
+  const { useAppStore } = await import('../src/store/useAppStore.js')
+  const st = () => useAppStore.getState()
+  st().setViewDay(999)
+  assert.equal(st().viewDay, 133)
+  st().setViewDay(0)
+  assert.equal(st().viewDay, 1)
+  st().setViewDay(null)
+  assert.equal(st().viewDay, null)
+  st().setLoad('Ex', NaN)
+  assert.equal(st().loads['Ex'], 0)
+  st().setUser({ defPct: 100 })
+  assert.equal(st().user.defPct, 50)
+  st().setUser({ defPct: 15 })
+})
+
+test('trocas: Tirar desconta + Trocar sugere equivalente na medida', async () => {
+  const { findSwaps } = await import('../src/lib/swaps.js')
+  const { EXTRA_FOODS } = await import('../src/data/foods.js')
+  assert.ok(EXTRA_FOODS.length >= 60, `alimentos = ${EXTRA_FOODS.length}`)
+  const banana = { name: 'Banana Prata', qty: 1, unit: 'unid média (80g)', kcal: 72, prot: 1.0, carb: 18.6, fat: 0.2 }
+  const trocas = findSwaps(banana, EXTRA_FOODS)
+  assert.equal(trocas.length, 5)
+  for (const t of trocas) {
+    assert.ok(t.grams >= 5 && Math.abs(t.diffKcal) <= 15, `${t.food.name}: ${t.grams}g diff ${t.diffKcal}`)
+  }
+  assert.deepEqual(findSwaps(null, EXTRA_FOODS), [])
+  const { dayTotals } = await import('../src/lib/diet.js')
+  const base = dayTotals({})
+  const semPao = dayTotals({ cafe: { skipped: ['Pão Integral 100%'] } })
+  assert.equal(base.k - semPao.k, 124)
+  const { useAppStore } = await import('../src/store/useAppStore.js')
+  const st = () => useAppStore.getState()
+  st().resetDay(7)
+  st().toggleBaseSkipped(7, 'cafe', 'Pão Integral 100%')
+  assert.deepEqual(st().mealLog[7].cafe.skipped, ['Pão Integral 100%'])
+  st().swapBaseItem(7, 'cafe', 'Queijo Cottage', { name: 'Iogurte Grego Natural (troca)', qty: 30, unit: 'g (equiv.)', kcal: 29, prot: 2.7, carb: 1.2, fat: 1.5 })
+  assert.ok(st().mealLog[7].cafe.skipped.includes('Queijo Cottage'))
+  assert.equal(st().mealLog[7].cafe.extraItems[0].swappedFrom, 'Queijo Cottage')
+  assert.ok(st().getMealItems(7, 'cafe').every((i) => i.name !== 'Pão Integral 100%'))
+  st().resetDay(7)
+})
+
 test('consultoria: Navy, FFMI, WHtR, Karvonen, 1RM, ISSN (valores de referência)', async () => {
   const m = await import('../src/lib/metrics.js')
   // Navy homem: cintura 85, pescoço 38, altura 167 → 24,9%

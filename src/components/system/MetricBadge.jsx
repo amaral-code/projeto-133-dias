@@ -1,63 +1,33 @@
-// MetricBadge — tag compacta mono + ponto pulsante (verde/âmbar/vermelho).
-// Uso: números, métricas, IDs, status. Fonte JetBrains Mono, tabular-nums.
-
+// Pill de status estilo app: sem ping, sem mono exagerado.
 const TONES = {
-  green: {
-    text: 'text-emerald-300',
-    dot: 'bg-emerald-400',
-    ping: 'bg-emerald-400',
-  },
-  amber: {
-    text: 'text-amber-300',
-    dot: 'bg-amber-400',
-    ping: 'bg-amber-400',
-  },
-  red: {
-    text: 'text-red-300',
-    dot: 'bg-red-400',
-    ping: 'bg-red-400',
-  },
-  neutral: {
-    text: 'text-zinc-300',
-    dot: 'bg-zinc-400',
-    ping: 'bg-zinc-400',
-  },
+  green: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
+  amber: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  red: 'bg-red-500/15 text-red-600 dark:text-red-300',
+  neutral: 'bg-secondary text-muted-foreground',
 }
 
 export default function MetricBadge({
   tone = 'neutral',
   value,
   label,
-  id,
-  pulse = true,
   className = '',
   ...rest
 }) {
-  const t = TONES[tone] ?? TONES.neutral
+  void rest.pulse
+  void rest.id
+  const { pulse, id, ...spanProps } = rest
   return (
     <span
-      {...rest}
+      {...spanProps}
       className={[
-        'inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1',
-        'border-zinc-200 bg-zinc-50 font-mono text-[11px] font-medium tabular-nums',
-        'dark:border-white/[0.08] dark:bg-[#1C211E]/60 dark:backdrop-blur-md',
-        t.text,
+        'inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1',
+        'text-xs font-semibold tabular-nums',
+        TONES[tone] ?? TONES.neutral,
         className,
       ].join(' ')}
     >
-      <span className="relative flex h-1.5 w-1.5 shrink-0">
-        {pulse && (
-          <span
-            aria-hidden
-            className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none ${t.ping}`}
-          />
-        )}
-        <span aria-hidden className={`relative inline-flex h-1.5 w-1.5 rounded-full ${t.dot}`} />
-      </span>
-      {label && <span className="truncate text-zinc-500 dark:text-zinc-500">{label}</span>}
-      <span className="truncate" data-numeric={id ?? value}>
-        {value}
-      </span>
+      {label && <span className="truncate opacity-70">{label}</span>}
+      <span className="truncate">{value}</span>
     </span>
   )
 }

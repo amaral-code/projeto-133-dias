@@ -9,7 +9,8 @@
 //    Karvonen (1957) com FC de repouso, ou %FCmax quando sem repouso.
 // 5) 1RM — Epley (1985): w×(1+r/30); Brzycki (1993): w×36/(37−r). Válido p/ 1–10 reps.
 // 6) Proteína — ISSN Position Stand, Jäger et al. (2017): 1,4–2,0 g/kg;
-//    2,3–3,1 g/kg p/ reter massa magra em déficit; 0,25 g/kg ou 20–40 g/refeição.
+//    em déficit, 2,3–3,1 g/kg de MASSA MAGRA (Helms et al. 2014) p/ reter
+//    massa magra; 0,25 g/kg ou 20–40 g/refeição.
 
 const log10 = (x) => Math.log10(x)
 
@@ -121,7 +122,7 @@ export function epley1RM(weight, reps) {
 
 export function brzycki1RM(weight, reps) {
   const w = Number(weight), r = Number(reps)
-  if (!(w > 0 && r >= 1 && r < 37)) return null
+  if (!(w > 0 && r >= 1 && r <= 10)) return null
   return Number((w * 36 / (37 - r)).toFixed(1))
 }
 
@@ -142,7 +143,7 @@ export function proteinTargets(weightKg) {
   const w = Number(weightKg) || 70
   return {
     base: [Math.round(w * 1.4), Math.round(w * 2.0)], // ISSN geral
-    cut: [Math.round(w * 2.3), Math.round(w * 3.1)], // ISSN em déficit
+    cut: [Math.round(w * 2.3), Math.round(w * 3.1)], // déficit, por massa magra (a Consultoria ajusta qdo há medidas)
     perMeal: [Math.max(20, Math.round(w * 0.25)), 40], // por refeição
   }
 }

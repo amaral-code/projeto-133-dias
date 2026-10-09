@@ -2,10 +2,11 @@
 // Regra: nada de emoji como icone de interface — use <Icon>.
 
 const PATHS = {
-  home: <><path d="M3 9.5 12 2.5l9 7V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></>,
-  dumbbell: <><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11" /></>,
-  food: <><path d="M4 2v7a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V2" /><line x1="7" y1="2" x2="7" y2="22" /><path d="M19 2v20" /><path d="M19 6h3a2 2 0 0 1 2 2v3a3 3 0 0 1-3 3h-2" /></>,
-  chart: <><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></>,
+  home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M9 21v-9h6v9" /></>,
+  dumbbell: <><path d="m6.5 6.5 11 11" /><path d="m4 9-2 2 11 11 2-2" /><path d="m9 4 2-2 11 11-2 2" /><path d="m3 7 4-4 3 3-4 4Z" /><path d="m14 18 4-4 3 3-4 4Z" /></>,
+  food: <><path d="M4 3v6a3 3 0 0 0 6 0V3M7 3v18" /><path d="M20 3c-4 0-5 5-5 9h5M20 3v18" /></>,
+  chart: <><path d="M3 21V11M8 21v-7M13 21V9M18 21V5" /><path d="m3 8 5-4 5 2 8-5" /></>,
+  book: <><path d="M12 5c-3-2-6-2-10-2v16c4 0 7 0 10 2" /><path d="M12 5c3-2 6-2 10-2v16c-4 0-7 0-10 2" /><path d="M12 5v16" /></>,
   sliders: <><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></>,
   flame: <path d="M12 2.5c2.2 4.2 6 6.3 6 11a6 6 0 0 1-12 0c0-4.7 3.8-6.8 6-11z" />,
   drop: <path d="M12 2.7l5.7 5.7a8 8 0 1 1-11.4 0z" />,
@@ -31,11 +32,10 @@ const PATHS = {
   info: <><circle cx="12" cy="12" r="9" /><line x1="12" y1="11" x2="12" y2="16.5" /><circle cx="12" cy="8" r="0.6" /></>,
   repeat: <><polyline points="17 2 21 6 17 10" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 22 3 18 7 14" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></>,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></>,
-  save: <><path d="M12 3v12" /><polyline points="7 10 12 15 17 10" /><path d="M4 21h16" /></>,
-  book: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z" />,
   phone: <><rect x="7" y="2" width="10" height="20" rx="2.5" /><line x1="11" y1="18.5" x2="13" y2="18.5" /></>,
   pencil: <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  search: <><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.5" y2="16.5" /></>,
   bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>,
 }
 

@@ -51,16 +51,21 @@ export const useAppStore = create((set, get) => ({
       }
       if (!u.sex) u.sex = 'M'
       if (saved.isDark == null) saved.isDark = initialState.isDark
-      set({ ...saved, user: { ...initialState.user, ...u }, hydrated: true })
+      // Validação: storage corrompido nunca derruba o app
+      const days = saved.days && typeof saved.days === 'object' ? saved.days : {}
+      const mealLog = saved.mealLog && typeof saved.mealLog === 'object' ? saved.mealLog : {}
+      const loads = saved.loads && typeof saved.loads === 'object' ? saved.loads : {}
+      const trainKey = saved.trainKey && ['SEG', 'TER', 'QUA', 'QUI', 'SEX'].includes(saved.trainKey) ? saved.trainKey : null
+      set({ ...saved, days, mealLog, loads, trainKey, user: { ...initialState.user, ...u }, hydrated: true })
     }
     else set({ hydrated: true })
   },
 
   setTab: (activeTab) => set({ activeTab }),
   setDark: (isDark) => { set({ isDark }); persist(get) },
-  setUser: (patch) => { set((s) => ({ user: { ...s.user, ...patch } })); persist(get) },
+  setUser: (patch) => { set((s) => { const user = { ...s.user, ...patch }; if (user.defPct != null) user.defPct = Math.max(0, Math.min(50, Number(user.defPct) || 0)); return { user } }); persist(get) },
   setStartDate: (startDate) => { set({ startDate }); persist(get) },
-  setViewDay: (viewDay) => set({ viewDay }),
+  setViewDay: (viewDay) => set({ viewDay: viewDay == null ? null : Math.min(133, Math.max(1, Math.round(Number(viewDay) || 1))) }),
   setTrainKey: (trainKey) => { set({ trainKey }); persist(get) },
 
   toast: null, // { text } — feedback global estilo app (não persiste)
@@ -92,6 +97,34 @@ export const useAppStore = create((set, get) => ({
       return { mealLog: { ...s.mealLog, [day]: { ...log, [mealId]: { ...prev, extraItems: [...prev.extraItems, { ...food, id: Date.now() + Math.random() }] } } } }
     }); persist(get)
   },
+  // "Tirar" um item do plano no dia (ex: não vou comer o pão hoje).
+  // Guarda em mealLog[day][mealId].skipped = [nomes]; dayTotals desconta.
+  toggleBaseSkipped: (day, mealId, itemName) => {
+    set((s) => {
+      const log = s.mealLog[day] ?? {}
+      const prev = log[mealId] ?? { eaten: false, extraItems: [] }
+      const skipped = Array.isArray(prev.skipped) ? [...prev.skipped] : []
+      const i = skipped.indexOf(itemName)
+      if (i >= 0) skipped.splice(i, 1)
+      else skipped.push(itemName)
+      return { mealLog: { ...s.mealLog, [day]: { ...log, [mealId]: { ...prev, skipped } } } }
+    }); persist(get)
+  },
+  // "Trocar": tira o item do plano e lança o equivalente já na medida certa.
+  swapBaseItem: (day, mealId, baseName, newExtra) => {
+    const st = get()
+    const log = st.mealLog[day] ?? {}
+    const prev = log[mealId] ?? { eaten: false, extraItems: [] }
+    const skipped = Array.isArray(prev.skipped) ? [...prev.skipped] : []
+    if (!skipped.includes(baseName)) skipped.push(baseName)
+    set((s) => {
+      const lg = s.mealLog[day] ?? {}
+      const pv = lg[mealId] ?? { eaten: false, extraItems: [] }
+      const sk = Array.isArray(pv.skipped) ? [...pv.skipped] : []
+      if (!sk.includes(baseName)) sk.push(baseName)
+      return { mealLog: { ...s.mealLog, [day]: { ...lg, [mealId]: { ...pv, skipped: sk, extraItems: [...(pv.extraItems ?? []), { ...newExtra, id: Date.now() + Math.random(), swappedFrom: baseName }] } } } }
+    }); persist(get)
+  },
   removeExtraItem: (day, mealId, itemId) => {
     set((s) => {
       const log = s.mealLog[day] ?? {}
@@ -117,7 +150,8 @@ export const useAppStore = create((set, get) => ({
     }); persist(get)
   },
   setLoad: (exercise, load) => {
-    set((s) => ({ loads: { ...s.loads, [exercise]: load } })); persist(get)
+    const v = load === '' ? '' : (Number.isFinite(Number(load)) ? Number(load) : 0)
+    set((s) => ({ loads: { ...s.loads, [exercise]: v } })); persist(get)
   },
   addWater: (day, ml) => {
     set((s) => {
@@ -182,10 +216,11 @@ export const useAppStore = create((set, get) => ({
     }); persist(get)
     return n
   },
-  allSets: () => Object.values(get().days).flatMap((d) => d.sets ?? []),
+  allSets: () => Object.values(get().days ?? {}).flatMap((d) => (Array.isArray(d?.sets) ? d.sets : [])),
   getMealItems: (day, mealId) => {
     const base = MEALS.find((m) => m.id === mealId)
+    const skipped = get().mealLog[day]?.[mealId]?.skipped ?? []
     const extra = get().mealLog[day]?.[mealId]?.extraItems ?? []
-    return [...(base?.items ?? []), ...extra]
+    return [...(base?.items ?? []).filter((i) => !skipped.includes(i.name)), ...extra]
   }
 }))

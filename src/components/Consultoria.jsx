@@ -40,6 +40,10 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
     const w = whtr(waist, height)
     const zones = hrZones({ age: user.age ?? 19, restHr })
     const prot = proteinTargets(weight)
+    // Cut pela MASSA MAGRA (Helms/ISSN: 2,3–3,1 g/kg FFM) quando medida;
+    // sem medidas, cai na estimativa por peso total.
+    const protCut = f ? [Math.round(f.leanMass * 2.3), Math.round(f.leanMass * 3.1)] : prot.cut
+    const protCutSub = f ? '2,3–3,1 g/kg da sua massa magra' : '2,3–3,1 g/kg (meça p/ ajustar à massa magra)'
     const pace = cutPace(weight)
     const goalW = f ? targetWeightForBF(f.leanMass, 12) : null
     const weeks = goalW ? weeksToGoal(weight, goalW) : null
@@ -48,7 +52,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
     if (!waist) missing.push('cintura')
     if (!neck) missing.push('pescoço')
     if (!weight) missing.push('peso')
-    return { weight, waist, neck, hip, restHr, height, sex, bf, f, w, zones, prot, pace, goalW, weeks, missing }
+    return { weight, waist, neck, hip, restHr, height, sex, bf, f, w, zones, prot, protCut, protCutSub, pace, goalW, weeks, missing }
   }, [user, days, currentDay])
 
   const bfCat = bfCategory(m.bf, m.sex)
@@ -71,7 +75,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
 
       {/* COMPOSIÇÃO */}
       <div className="rounded-md bg-white/5 border border-white/10 p-4">
-        <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-60">Composição (US Navy + Siri)</p>
+        <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-60">Composição (US Navy)</p>
         {m.bf != null ? (<>
           <p className="font-black text-3xl mt-1">{m.bf}<span className="text-base">% gordura</span> <span className={`text-sm font-bold ${TONE[bfCat.tone]}`}>• {bfCat.label}</span></p>
           <div className="mt-1">
@@ -107,7 +111,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
       <div className="rounded-md bg-white/5 border border-white/10 p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-widest opacity-60">Proteína (ISSN) · {m.weight} kg</p>
         <Row label="Manutenção/ganho" value={`${m.prot.base[0]}–${m.prot.base[1]} g/dia`} sub="1,4–2,0 g/kg" />
-        <Row label="Em cutting (você)" value={`${m.prot.cut[0]}–${m.prot.cut[1]} g/dia`} tone="good" sub="2,3–3,1 g/kg p/ reter massa magra" />
+        <Row label="Em cutting (você)" value={`${m.protCut[0]}–${m.protCut[1]} g/dia`} tone="good" sub={m.protCutSub} />
         <Row label="Por refeição" value={`${m.prot.perMeal[0]}–${m.prot.perMeal[1]} g`} sub="0,25 g/kg ou 20–40 g" />
       </div>
 
@@ -119,7 +123,7 @@ export default function Consultoria({ user, days, currentDay, onGoMeasures }) {
         </div>
       )}
 
-      <p className="text-[10px] opacity-40 leading-relaxed">¹ Navy/Hodgdon-Beckett (validado vs DXA) · Siri · FFMI Kouri 1995 · WHtR Ashwell/BMJ Open 2016 (NICE) · Tanaka JACC 2001 · Karvonen 1957 · Epley/Brzycki (NSCA) · ISSN Jäger 2017. Estimativas de academia — não substituem avaliação médica/nutricional.</p>
+      <p className="text-[10px] opacity-40 leading-relaxed">¹ Navy/Hodgdon-Beckett (validado vs DXA) · FFMI Kouri 1995 · WHtR Ashwell/BMJ Open 2016 (NICE) · Tanaka JACC 2001 · Karvonen 1957 · Epley/Brzycki (NSCA) · ISSN Jäger 2017. Estimativas de academia — não substituem avaliação médica/nutricional.</p>
     </div>
   )
 }

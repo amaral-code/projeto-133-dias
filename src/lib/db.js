@@ -43,6 +43,7 @@ export async function loadPersisted() {
 let saveTimer = null
 let mirrorTimer = null
 let pendingState = null
+let mirrorPending = null
 
 function flushToIDB() {
   if (!pendingState) return
@@ -53,8 +54,10 @@ function flushToIDB() {
 
 function flushMirror() {
   mirrorTimer = null
-  if (!pendingState) return
-  writeMirror(pendingState)
+  if (!mirrorPending) return
+  const s = mirrorPending
+  mirrorPending = null
+  writeMirror(s)
 }
 
 export function savePersistedDebounced(state) {
@@ -64,6 +67,7 @@ export function savePersistedDebounced(state) {
   saveTimer = setTimeout(flushToIDB, 400)
   // Espelho localStorage com throttle de 1s: JSON.stringify do banco inteiro a
   // cada tecla travava o celular; 1s + descarga ao esconder/fechar não perde nada
+  mirrorPending = state
   if (!mirrorTimer) {
     writeMirror(state) // 1ª escrita imediata
     mirrorTimer = setTimeout(flushMirror, 1000)
@@ -74,6 +78,8 @@ export function savePersistedDebounced(state) {
 if (typeof window !== 'undefined') {
   const flush = () => {
     if (mirrorTimer) { clearTimeout(mirrorTimer); flushMirror() }
+    else if (mirrorPending) writeMirror(mirrorPending)
+    mirrorPending = null
     if (pendingState) flushToIDB()
   };
   window.addEventListener('pagehide', flush)
